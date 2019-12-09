@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<PluginConfig>
+  <SupportURL>https://forums.indigodomo.com/viewforum.php?f=295</SupportURL>
+   
+  <Field id="updateFrequency" type="textfield" defaultValue="30">
+    <Label>Update frequency (minutes):</Label>
+  </Field>
+  <Field id="statusNote" type="label" fontSize="small" fontColor="darkgray">
+    <Label>Minimum update interval is 5 minutes.  Default is 30.</Label>
+  </Field>
+
+  <Field id="logLevel" type="menu" defaultValue="20">
+    <Label>Event Logging Level:</Label>
+    <List>
+      <Option value="5">Detailed Debugging Messages</Option>
+      <Option value="10">Debugging Messages</Option>
+      <Option value="20">Informational Messages</Option>
+      <Option value="30">Warning Messages</Option>
+      <Option value="40">Error Messages</Option>
+      <Option value="50">Critical Errors Only</Option>
+    </List>
+  </Field>
+ 
+</PluginConfig>

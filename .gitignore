@@ -127,3 +127,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/bimmerconnected-bimmer_connected- Library to query the status of your BMW or Mini from the Connected….webloc
