@@ -77,13 +77,12 @@ class Plugin(indigo.PluginBase):
                     for devID, device in self.cd_vehicles.iteritems():
                         accountID = device.pluginProps["account"]
                         account = self.cd_accounts[int(accountID)]
-                        results = account.queryData(device.address)
-                        self.logger.debug(u"{}: runConcurrentThread, results = {}".format(device.name, results))        
-             
+                        results = account.queryData(device.address)             
                         states_list = []
                         for key in results:
                             states_list.append({'key': key.strip(), 'value': results[key]})
                         device.updateStatesOnServer(states_list)
+                        self.logger.debug(u"{}: states updated".format(device.name))        
 
                         
                 self.sleep(2.0)
@@ -100,7 +99,7 @@ class Plugin(indigo.PluginBase):
 
         if dev.deviceTypeId == "cdAccount":
                         
-            cdAccount = ConnectedDrive(dev.pluginProps["username"],  dev.pluginProps["password"])
+            cdAccount = ConnectedDrive(dev.pluginProps["region"],  dev.pluginProps["username"],  dev.pluginProps["password"])
             self.cd_accounts[dev.id] = cdAccount
                                     
         elif dev.deviceTypeId == "cdVehicle":

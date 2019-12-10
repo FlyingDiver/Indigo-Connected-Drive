@@ -12,6 +12,14 @@
 			<Field id="password" type="textfield" defaultValue="">
 				<Label>Password:</Label>
 			</Field>
+        	<Field id="region" type="menu" defaultValue="NA">
+        		<Label>Region:</Label>
+        		<List>
+        			<Option value="NA">North America</Option>
+        			<Option value="CN">China</Option>
+        			<Option value="WD">Rest of World</Option>
+        		</List>
+        	</Field>
         </ConfigUI>
      </Device>
 

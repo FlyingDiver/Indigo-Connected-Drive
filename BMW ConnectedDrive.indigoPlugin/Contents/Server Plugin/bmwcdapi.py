@@ -31,13 +31,11 @@ import re
 import xml.etree.ElementTree as etree  
 import logging
 
-#NORTH_AMERICA:
-SERVER_URL = 'b2vapi.bmwgroup.us'
-#CHINA:
-#SERVER_URL = 'b2vapi.bmwgroup.cn:8592'
-#REST_OF_WORLD:
-#SERVER_URL = 'b2vapi.bmwgroup.com'
-
+cd_servers = { 'NA' : 'b2vapi.bmwgroup.us',
+            'CN' : 'b2vapi.bmwgroup.cn:8592',
+            'WD' : 'b2vapi.bmwgroup.com'
+            }
+            
 AUTH_API = 'https://{}/gcdm/oauth/token'
 VEHICLE_API = 'https://{}/api/vehicle'
 
@@ -45,9 +43,10 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:57.0) Gecko/20100101 
 
 class ConnectedDrive(object):
 
-    def __init__(self, username, password):
+    def __init__(self, region, username, password):
         self.logger = logging.getLogger("Plugin.ConnectedDrive")
 
+        self.serverURL = cd_servers[region]
         self.bmwUsername = username
         self.bmwPassword = password
         self.accessToken = None
@@ -78,7 +77,7 @@ class ConnectedDrive(object):
                 "Content-Type": "application/x-www-form-urlencoded",
                 "Content-Length": "124",
                 "Connection": "Keep-Alive",
-                "Host": SERVER_URL,
+                "Host": self.serverURL,
                 "Accept-Encoding": "gzip",
                 "Authorization": "Basic blF2NkNxdHhKdVhXUDc0eGYzQ0p3VUVQOjF6REh4NnVuNGNEanli"
                                  "TEVOTjNreWZ1bVgya0VZaWdXUGNRcGR2RFJwSUJrN3JPSg==",
@@ -94,9 +93,10 @@ class ConnectedDrive(object):
         }
 
         data = urllib.urlencode(values)
-        url = AUTH_API.format(SERVER_URL)
+        url = AUTH_API.format(self.serverURL)
         r = requests.post(url, data=data, headers=headers,allow_redirects=False)
         if (r.status_code != 200):
+            self.logger.debug('generateCredentials request code {}, url: {}'.format(r.status_code, url))
             self.authenticated = False
             return
         myPayLoad=r.json()
@@ -116,26 +116,22 @@ class ConnectedDrive(object):
             }
 
         results = {}
-        url = VEHICLE_API.format(SERVER_URL)
-
-        r = requests.get('{}/dynamic/v1/{}?offset=-60'.format(url, vin), headers=headers,allow_redirects=True)
+        base_url = VEHICLE_API.format(self.serverURL)
+        url = '{}/dynamic/v1/{}?offset=-60'.format(base_url, vin)
+        r = requests.get(url, headers=headers,allow_redirects=True)
         results['comm_status'] = r.status_code
         if (r.status_code== 200):
             map=r.json() ['attributesMap']
             for k, v in map.items():
                 results[k] = v
-
-        r = requests.get('{}/navigation/v1/'.format(url, vin), headers=headers,allow_redirects=True)
-        results['comm_status'] = r.status_code
-        if (r.status_code== 200):
+        else:
+            self.logger.debug('queryData request code {}, url: {}'.format(r.status_code, url))
+        
+        url = '{}/navigation/v1/{}'.format(base_url, vin)
+        r = requests.get(url, headers=headers,allow_redirects=True)
+        if (r.status_code == 200):
             map=r.json()
-            for k, v in map.items():
-                results[k] = v
-
-        r = requests.get('{}/efficiency/v1/'.format(url, vin), headers=headers,allow_redirects=True)
-        results['comm_status'] = r.status_code
-        if (r.status_code== 200):
-            map=r.json() ['lastTripList']
+            self.logger.debug('queryData navigation map = {}'.format(map))
             for k, v in map.items():
                 results[k] = v
 
