@@ -34,231 +34,364 @@
                 <List class="self" method="get_account_list" dynamicReload="true"/>
                 <CallbackMethod>menuChanged</CallbackMethod>
             </Field>
-            <Field id="address" type="textfield">
-                <Label>VIN:</Label>
+            <Field id="address" type="menu">
+                <Label>Vehicle:</Label>
+                <List class="self" method="get_vehicle_list" dynamicReload="true"/>
+                <CallbackMethod>menuChanged</CallbackMethod>
             </Field>
         </ConfigUI>    
         <States>
-            <State id="updateTime_converted_timestamp">
+        
+            <!-- These states are from the Vehicle data query -->
+
+            <State id="a4a">
                 <ValueType>String</ValueType>
-                <TriggerLabel>updateTime_converted_timestamp</TriggerLabel>
-                <ControlPageLabel>updateTime_converted_timestamp</ControlPageLabel>
+                <TriggerLabel>a4a</TriggerLabel>
+                <ControlPageLabel>a4a</ControlPageLabel>
             </State>
-            <State id="updateTime">
+            <State id="bodytype">
                 <ValueType>String</ValueType>
-                <TriggerLabel>updateTime</TriggerLabel>
-                <ControlPageLabel>updateTime</ControlPageLabel>
+                <TriggerLabel>bodytype</TriggerLabel>
+                <ControlPageLabel>bodytype</ControlPageLabel>
             </State>
-            <State id="remaining_fuel">
+            <State id="brand">
                 <ValueType>String</ValueType>
-                <TriggerLabel>remaining_fuel</TriggerLabel>
-                <ControlPageLabel>remaining_fuel</ControlPageLabel>
+                <TriggerLabel>brand</TriggerLabel>
+                <ControlPageLabel>brand</ControlPageLabel>
             </State>
-            <State id="updateTime_converted">
+            <State id="carCloud">
                 <ValueType>String</ValueType>
-                <TriggerLabel>updateTime_converted</TriggerLabel>
-                <ControlPageLabel>updateTime_converted</ControlPageLabel>
+                <TriggerLabel>carCloud</TriggerLabel>
+                <ControlPageLabel>carCloud</ControlPageLabel>
             </State>
-            <State id="door_driver_rear">
+            <State id="chargeNow">
                 <ValueType>String</ValueType>
-                <TriggerLabel>door_driver_rear</TriggerLabel>
-                <ControlPageLabel>door_driver_rear</ControlPageLabel>
+                <TriggerLabel>chargeNow</TriggerLabel>
+                <ControlPageLabel>chargeNow</ControlPageLabel>
             </State>
-            <State id="beRemainingRangeFuelMile">
+            <State id="chargingControl">
                 <ValueType>String</ValueType>
-                <TriggerLabel>beRemainingRangeFuelMile</TriggerLabel>
-                <ControlPageLabel>beRemainingRangeFuelMile</ControlPageLabel>
+                <TriggerLabel>chargingControl</TriggerLabel>
+                <ControlPageLabel>chargingControl</ControlPageLabel>
             </State>
-            <State id="gps_lng">
+            <State id="climateControl">
                 <ValueType>String</ValueType>
-                <TriggerLabel>gps_lng</TriggerLabel>
-                <ControlPageLabel>gps_lng</ControlPageLabel>
-            </State>
-            <State id="DCS_CCH_Activation">
-                <ValueType>String</ValueType>
-                <TriggerLabel>DCS_CCH_Activation</TriggerLabel>
-                <ControlPageLabel>DCS_CCH_Activation</ControlPageLabel>
-            </State>
-            <State id="head_unit">
-                <ValueType>String</ValueType>
-                <TriggerLabel>head_unit</TriggerLabel>
-                <ControlPageLabel>head_unit</ControlPageLabel>
-            </State>
-            <State id="window_passenger_rear">
-                <ValueType>String</ValueType>
-                <TriggerLabel>window_passenger_rear</TriggerLabel>
-                <ControlPageLabel>window_passenger_rear</ControlPageLabel>
-            </State>
-            <State id="hood_state">
-                <ValueType>String</ValueType>
-                <TriggerLabel>hood_state</TriggerLabel>
-                <ControlPageLabel>hood_state</ControlPageLabel>
-            </State>
-            <State id="updateTime_converted_date">
-                <ValueType>String</ValueType>
-                <TriggerLabel>updateTime_converted_date</TriggerLabel>
-                <ControlPageLabel>updateTime_converted_date</ControlPageLabel>
+                <TriggerLabel>climateControl</TriggerLabel>
+                <ControlPageLabel>climateControl</ControlPageLabel>
             </State>        
-            <State id="lsc_trigger">
+            <State id="climateControlRES">
                 <ValueType>String</ValueType>
-                <TriggerLabel>lsc_trigger</TriggerLabel>
-                <ControlPageLabel>lsc_trigger</ControlPageLabel>
+                <TriggerLabel>climateControlRES</TriggerLabel>
+                <ControlPageLabel>climateControlRES</ControlPageLabel>
             </State>        
-            <State id="beRemainingRangeFuel">
+            <State id="climateFunction">
                 <ValueType>String</ValueType>
-                <TriggerLabel>beRemainingRangeFuel</TriggerLabel>
-                <ControlPageLabel>beRemainingRangeFuel</ControlPageLabel>
-            </State>        
-            <State id="kombi_current_remaining_range_fuel">
+                <TriggerLabel>climateFunction</TriggerLabel>
+                <ControlPageLabel>climateFunction</ControlPageLabel>
+            </State>     
+            <State id="climateNow">
                 <ValueType>String</ValueType>
-                <TriggerLabel>kombi_current_remaining_range_fuel</TriggerLabel>
-                <ControlPageLabel>kombi_current_remaining_range_fuel</ControlPageLabel>
-            </State>        
-            <State id="check_control_messages">
+                <TriggerLabel>climateNow</TriggerLabel>
+                <ControlPageLabel>climateNow</ControlPageLabel>
+            </State>     
+            <State id="climateNowRES">
                 <ValueType>String</ValueType>
-                <TriggerLabel>check_control_messages</TriggerLabel>
-                <ControlPageLabel>check_control_messages</ControlPageLabel>
-            </State>        
-            <State id="door_lock_state">
+                <TriggerLabel>climateNowRES</TriggerLabel>
+                <ControlPageLabel>climateNowRES</ControlPageLabel>
+            </State>     
+            <State id="color">
                 <ValueType>String</ValueType>
-                <TriggerLabel>door_lock_state</TriggerLabel>
-                <ControlPageLabel>door_lock_state</ControlPageLabel>
-            </State>        
-            <State id="comm_status">
+                <TriggerLabel>color</TriggerLabel>
+                <ControlPageLabel>color</ControlPageLabel>
+            </State>     
+            <State id="colorCode">
                 <ValueType>String</ValueType>
-                <TriggerLabel>comm_status</TriggerLabel>
-                <ControlPageLabel>comm_status</ControlPageLabel>
+                <TriggerLabel>colorCode</TriggerLabel>
+                <ControlPageLabel>colorCode</ControlPageLabel>
+            </State>     
+            <State id="countryCode">
+                <ValueType>String</ValueType>
+                <TriggerLabel>countryCode</TriggerLabel>
+                <ControlPageLabel>countryCode</ControlPageLabel>
+            </State>     
+            <State id="doorLock">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorLock</TriggerLabel>
+                <ControlPageLabel>doorLock</ControlPageLabel>
+            </State>     
+            <State id="doorUnlock">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorUnlock</TriggerLabel>
+                <ControlPageLabel>doorUnlock</ControlPageLabel>
+            </State>     
+            <State id="driveTrain">
+                <ValueType>String</ValueType>
+                <TriggerLabel>driveTrain</TriggerLabel>
+                <ControlPageLabel>driveTrain</ControlPageLabel>
+            </State>     
+            <State id="fuelType">
+                <ValueType>String</ValueType>
+                <TriggerLabel>fuelType</TriggerLabel>
+                <ControlPageLabel>fuelType</ControlPageLabel>
+            </State>     
+            <State id="hasAlarmSystem">
+                <ValueType>String</ValueType>
+                <TriggerLabel>hasAlarmSystem</TriggerLabel>
+                <ControlPageLabel>hasAlarmSystem</ControlPageLabel>
+            </State>     
+            <State id="hmiVersion">
+                <ValueType>String</ValueType>
+                <TriggerLabel>hmiVersion</TriggerLabel>
+                <ControlPageLabel>hmiVersion</ControlPageLabel>
+            </State>     
+            <State id="hornBlow">
+                <ValueType>String</ValueType>
+                <TriggerLabel>hornBlow</TriggerLabel>
+                <ControlPageLabel>hornBlow</ControlPageLabel>
+            </State>     
+            <State id="hub">
+                <ValueType>String</ValueType>
+                <TriggerLabel>hub</TriggerLabel>
+                <ControlPageLabel>hub</ControlPageLabel>
+            </State>     
+            <State id="intermodalRouting">
+                <ValueType>String</ValueType>
+                <TriggerLabel>intermodalRouting</TriggerLabel>
+                <ControlPageLabel>intermodalRouting</ControlPageLabel>
+            </State>     
+            <State id="ipa">
+                <ValueType>String</ValueType>
+                <TriggerLabel>ipa</TriggerLabel>
+                <ControlPageLabel>ipa</ControlPageLabel>
+            </State>     
+            <State id="lastDestinations">
+                <ValueType>String</ValueType>
+                <TriggerLabel>lastDestinations</TriggerLabel>
+                <ControlPageLabel>lastDestinations</ControlPageLabel>
+            </State>     
+            <State id="lightFlash">
+                <ValueType>String</ValueType>
+                <TriggerLabel>lightFlash</TriggerLabel>
+                <ControlPageLabel>lightFlash</ControlPageLabel>
+            </State>     
+            <State id="lscType">
+                <ValueType>String</ValueType>
+                <TriggerLabel>lscType</TriggerLabel>
+                <ControlPageLabel>lscType</ControlPageLabel>
+            </State>     
+            <State id="model">
+                <ValueType>String</ValueType>
+                <TriggerLabel>model</TriggerLabel>
+                <ControlPageLabel>model</ControlPageLabel>
+            </State>     
+            <State id="onlineSearchMode">
+                <ValueType>String</ValueType>
+                <TriggerLabel>onlineSearchMode</TriggerLabel>
+                <ControlPageLabel>onlineSearchMode</ControlPageLabel>
+            </State>     
+            <State id="rangeMap">
+                <ValueType>String</ValueType>
+                <TriggerLabel>rangeMap</TriggerLabel>
+                <ControlPageLabel>rangeMap</ControlPageLabel>
+            </State>     
+            <State id="remote360">
+                <ValueType>String</ValueType>
+                <TriggerLabel>remote360</TriggerLabel>
+                <ControlPageLabel>remote360</ControlPageLabel>
+            </State>     
+            <State id="remoteSoftwareUpgrade">
+                <ValueType>String</ValueType>
+                <TriggerLabel>remoteSoftwareUpgrade</TriggerLabel>
+                <ControlPageLabel>remoteSoftwareUpgrade</ControlPageLabel>
+            </State>     
+            <State id="sendPoi">
+                <ValueType>String</ValueType>
+                <TriggerLabel>sendPoi</TriggerLabel>
+                <ControlPageLabel>sendPoi</ControlPageLabel>
+            </State>     
+            <State id="smartSolution">
+                <ValueType>String</ValueType>
+                <TriggerLabel>smartSolution</TriggerLabel>
+                <ControlPageLabel>smartSolution</ControlPageLabel>
+            </State>     
+            <State id="statisticsAvailable">
+                <ValueType>String</ValueType>
+                <TriggerLabel>statisticsAvailable</TriggerLabel>
+                <ControlPageLabel>statisticsAvailable</ControlPageLabel>
+            </State>     
+            <State id="statisticsCommunityEnabled">
+                <ValueType>String</ValueType>
+                <TriggerLabel>statisticsCommunityEnabled</TriggerLabel>
+                <ControlPageLabel>statisticsCommunityEnabled</ControlPageLabel>
+            </State>     
+            <State id="steering">
+                <ValueType>String</ValueType>
+                <TriggerLabel>steering</TriggerLabel>
+                <ControlPageLabel>steering</ControlPageLabel>
+            </State>     
+            <State id="vehicleFinder">
+                <ValueType>String</ValueType>
+                <TriggerLabel>vehicleFinder</TriggerLabel>
+                <ControlPageLabel>vehicleFinder</ControlPageLabel>
+            </State>     
+            <State id="vehicleFinderRestriction">
+                <ValueType>String</ValueType>
+                <TriggerLabel>vehicleFinderRestriction</TriggerLabel>
+                <ControlPageLabel>vehicleFinderRestriction</ControlPageLabel>
+            </State>     
+            <State id="yearOfConstruction">
+                <ValueType>String</ValueType>
+                <TriggerLabel>yearOfConstruction</TriggerLabel>
+                <ControlPageLabel>yearOfConstruction</ControlPageLabel>
+            </State>     
+                            
+            <!-- These states are from the Vehicle status query -->
+        
+            <State id="doorDriverFront">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorDriverFront</TriggerLabel>
+                <ControlPageLabel>doorDriverFront</ControlPageLabel>
+            </State>
+            <State id="doorDriverRear">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorDriverRear</TriggerLabel>
+                <ControlPageLabel>doorDriverRear</ControlPageLabel>
+            </State>
+            <State id="doorLockState">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorLockState</TriggerLabel>
+                <ControlPageLabel>doorLockState</ControlPageLabel>
+            </State>
+            <State id="doorPassengerFront">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorPassengerFront</TriggerLabel>
+                <ControlPageLabel>doorPassengerFront</ControlPageLabel>
+            </State>
+            <State id="doorPassengerRear">
+                <ValueType>String</ValueType>
+                <TriggerLabel>doorPassengerRear</TriggerLabel>
+                <ControlPageLabel>doorPassengerRear</ControlPageLabel>
+            </State>
+            <State id="fuelPercent">
+                <ValueType>String</ValueType>
+                <TriggerLabel>fuelPercent</TriggerLabel>
+                <ControlPageLabel>fuelPercent</ControlPageLabel>
+            </State>
+            <State id="gps_heading">
+                <ValueType>String</ValueType>
+                <TriggerLabel>gps_heading</TriggerLabel>
+                <ControlPageLabel>gps_heading</ControlPageLabel>
             </State>        
             <State id="gps_lat">
                 <ValueType>String</ValueType>
                 <TriggerLabel>gps_lat</TriggerLabel>
                 <ControlPageLabel>gps_lat</ControlPageLabel>
             </State>        
+            <State id="gps_lon">
+                <ValueType>String</ValueType>
+                <TriggerLabel>gps_lon</TriggerLabel>
+                <ControlPageLabel>gps_lon</ControlPageLabel>
+            </State>     
+            <State id="hood">
+                <ValueType>String</ValueType>
+                <TriggerLabel>hood</TriggerLabel>
+                <ControlPageLabel>hood</ControlPageLabel>
+            </State>
+            <State id="internalDataTimeUTC">
+                <ValueType>String</ValueType>
+                <TriggerLabel>internalDataTimeUTC</TriggerLabel>
+                <ControlPageLabel>internalDataTimeUTC</ControlPageLabel>
+            </State>
             <State id="mileage">
                 <ValueType>String</ValueType>
                 <TriggerLabel>mileage</TriggerLabel>
                 <ControlPageLabel>mileage</ControlPageLabel>
-            </State>        
-            <State id="fuelPercent">
+            </State>
+            <State id="parkingLight">
                 <ValueType>String</ValueType>
-                <TriggerLabel>fuelPercent</TriggerLabel>
-                <ControlPageLabel>fuelPercent</ControlPageLabel>
-            </State>        
-            <State id="door_passenger_rear">
+                <TriggerLabel>parkingLight</TriggerLabel>
+                <ControlPageLabel>parkingLight</ControlPageLabel>
+            </State>
+            <State id="positionLight">
                 <ValueType>String</ValueType>
-                <TriggerLabel>door_passenger_rear</TriggerLabel>
-                <ControlPageLabel>door_passenger_rear</ControlPageLabel>
-            </State>        
-            <State id="beRemainingRangeFuelKm">
+                <TriggerLabel>positionLight</TriggerLabel>
+                <ControlPageLabel>positionLight</ControlPageLabel>
+            </State>
+            <State id="rearWindow">
                 <ValueType>String</ValueType>
-                <TriggerLabel>beRemainingRangeFuelKm</TriggerLabel>
-                <ControlPageLabel>beRemainingRangeFuelKm</ControlPageLabel>
+                <TriggerLabel>rearWindow</TriggerLabel>
+                <ControlPageLabel>rearWindow</ControlPageLabel>
             </State>        
-            <State id="isAmPm">
+            <State id="remainingFuel">
                 <ValueType>String</ValueType>
-                <TriggerLabel>isAmPm</TriggerLabel>
+                <TriggerLabel>remainingFuel</TriggerLabel>
+                <ControlPageLabel>remainingFuel</ControlPageLabel>
+            </State>        
+            <State id="remainingRangeFuel">
+                <ValueType>String</ValueType>
+                <TriggerLabel>remainingRangeFuel</TriggerLabel>
+                <ControlPageLabel>remainingRangeFuel</ControlPageLabel>
+            </State>        
+            <State id="remainingRangeFuelMls">
+                <ValueType>String</ValueType>
+                <TriggerLabel>remainingRangeFuelMls</TriggerLabel>
+                <ControlPageLabel>remainingRangeFuelMls</ControlPageLabel>
+            </State>        
+            <State id="singleImmediateCharging">
+                <ValueType>String</ValueType>
+                <TriggerLabel>singleImmediateCharging</TriggerLabel>
+                <ControlPageLabel>singleImmediateCharging</ControlPageLabel>
+            </State>        
+            <State id="sunroof">
+                <ValueType>String</ValueType>
+                <TriggerLabel>sunroof</TriggerLabel>
+                <ControlPageLabel>sunroof</ControlPageLabel>
+            </State>        
+            <State id="trunk">
+                <ValueType>String</ValueType>
+                <TriggerLabel>trunk</TriggerLabel>
+                <ControlPageLabel>trunk</ControlPageLabel>
+            </State>        
+            <State id="updateReason">
+                <ValueType>String</ValueType>
+                <TriggerLabel>updateReason</TriggerLabel>
+                <ControlPageLabel>updateReason</ControlPageLabel>
+            </State>        
+            <State id="updateTime">
+                <ValueType>String</ValueType>
+                <TriggerLabel>updateTime</TriggerLabel>
+                <ControlPageLabel>updateTime</ControlPageLabel>
+            </State>        
+            <State id="vehicleCountry">
+                <ValueType>String</ValueType>
+                <TriggerLabel>vehicleCountry</TriggerLabel>
+                <ControlPageLabel>vehicleCountry</ControlPageLabel>
+            </State>        
+            <State id="windowDriverFront">
+                <ValueType>String</ValueType>
+                <TriggerLabel>windowDriverFront</TriggerLabel>
+                <ControlPageLabel>windowDriverFront</ControlPageLabel>
+            </State>        
+            <State id="windowDriverRear">
+                <ValueType>String</ValueType>
+                <TriggerLabel>windowDriverRear</TriggerLabel>
+                <ControlPageLabel>windowDriverRear</ControlPageLabel>
+            </State>        
+            <State id="windowPassengerFront">
+                <ValueType>String</ValueType>
+                <TriggerLabel>windowPassengerFront</TriggerLabel>
                 <ControlPageLabel>isAmPm</ControlPageLabel>
             </State>        
-            <State id="unitOfElectricConsumption">
+            <State id="windowPassengerFront">
                 <ValueType>String</ValueType>
                 <TriggerLabel>unitOfElectricConsumption</TriggerLabel>
                 <ControlPageLabel>unitOfElectricConsumption</ControlPageLabel>
             </State>        
-            <State id="sunroof_position">
+            <State id="windowPassengerRear">
                 <ValueType>String</ValueType>
-                <TriggerLabel>sunroof_position</TriggerLabel>
-                <ControlPageLabel>sunroof_position</ControlPageLabel>
+                <TriggerLabel>windowPassengerRear</TriggerLabel>
+                <ControlPageLabel>windowPassengerRear</ControlPageLabel>
             </State>        
-            <State id="shdStatusUnified">
-                <ValueType>String</ValueType>
-                <TriggerLabel>shdStatusUnified</TriggerLabel>
-                <ControlPageLabel>shdStatusUnified</ControlPageLabel>
-            </State>        
-            <State id="unitOfCombustionConsumption">
-                <ValueType>String</ValueType>
-                <TriggerLabel>unitOfCombustionConsumption</TriggerLabel>
-                <ControlPageLabel>unitOfCombustionConsumption</ControlPageLabel>
-            </State>        
-            <State id="sunroof_state">
-                <ValueType>String</ValueType>
-                <TriggerLabel>sunroof_state</TriggerLabel>
-                <ControlPageLabel>sunroof_state</ControlPageLabel>
-            </State>        
-            <State id="door_passenger_front">
-                <ValueType>String</ValueType>
-                <TriggerLabel>door_passenger_front</TriggerLabel>
-                <ControlPageLabel>door_passenger_front</ControlPageLabel>
-            </State>        
-            <State id="condition_based_services">
-                <ValueType>String</ValueType>
-                <TriggerLabel>condition_based_services</TriggerLabel>
-                <ControlPageLabel>condition_based_services</ControlPageLabel>
-            </State>        
-            <State id="lastUpdateReason">
-                <ValueType>String</ValueType>
-                <TriggerLabel>lastUpdateReason</TriggerLabel>
-                <ControlPageLabel>lastUpdateReason</ControlPageLabel>
-            </State>        
-            <State id="lights_parking">
-                <ValueType>String</ValueType>
-                <TriggerLabel>lights_parking</TriggerLabel>
-                <ControlPageLabel>lights_parking</ControlPageLabel>
-            </State>        
-            <State id="head_unit_pu_software">
-                <ValueType>String</ValueType>
-                <TriggerLabel>head_unit_pu_software</TriggerLabel>
-                <ControlPageLabel>head_unit_pu_software</ControlPageLabel>
-            </State>        
-            <State id="window_driver_rear">
-                <ValueType>String</ValueType>
-                <TriggerLabel>window_driver_rear</TriggerLabel>
-                <ControlPageLabel>window_driver_rear</ControlPageLabel>
-            </State>        
-            <State id="updateTime_converted_time">
-                <ValueType>String</ValueType>
-                <TriggerLabel>updateTime_converted_time</TriggerLabel>
-                <ControlPageLabel>updateTime_converted_time</ControlPageLabel>
-            </State>        
-            <State id="door_driver_front">
-                <ValueType>String</ValueType>
-                <TriggerLabel>door_driver_front</TriggerLabel>
-                <ControlPageLabel>door_driver_front</ControlPageLabel>
-            </State>        
-            <State id="unitOfEnergy">
-                <ValueType>String</ValueType>
-                <TriggerLabel>unitOfEnergy</TriggerLabel>
-                <ControlPageLabel>unitOfEnergy</ControlPageLabel>
-            </State>        
-            <State id="unitOfLength">
-                <ValueType>String</ValueType>
-                <TriggerLabel>unitOfLength</TriggerLabel>
-                <ControlPageLabel>unitOfLength</ControlPageLabel>
-            </State>        
-            <State id="window_driver_front">
-                <ValueType>String</ValueType>
-                <TriggerLabel>window_driver_front</TriggerLabel>
-                <ControlPageLabel>window_driver_front</ControlPageLabel>
-            </State>        
-            <State id="window_passenger_front">
-                <ValueType>String</ValueType>
-                <TriggerLabel>window_passenger_front</TriggerLabel>
-                <ControlPageLabel>window_passenger_front</ControlPageLabel>
-            </State>        
-            <State id="heading">
-                <ValueType>String</ValueType>
-                <TriggerLabel>heading</TriggerLabel>
-                <ControlPageLabel>heading</ControlPageLabel>
-            </State>        
-            <State id="trunk_state">
-                <ValueType>String</ValueType>
-                <TriggerLabel>trunk_state</TriggerLabel>
-                <ControlPageLabel>trunk_state</ControlPageLabel>
-            </State>
-            <State id="DCS_CCH_Ongoing">
-                <ValueType>String</ValueType>
-                <TriggerLabel>DCS_CCH_Ongoing</TriggerLabel>
-                <ControlPageLabel>DCS_CCH_Ongoing</ControlPageLabel>
-            </State>        
-        </States>
+         </States>
     </Device> 
 </Devices>

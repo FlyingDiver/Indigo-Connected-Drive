@@ -26,18 +26,27 @@ import json
 import requests
 import time
 import datetime
-import urllib
-import re
-import xml.etree.ElementTree as etree  
 import logging
 
-cd_servers = { 'NA' : 'b2vapi.bmwgroup.us',
-            'CN' : 'b2vapi.bmwgroup.cn:8592',
-            'WD' : 'b2vapi.bmwgroup.com'
-            }
+cd_servers = { 
+    'NA' : 'b2vapi.bmwgroup.us',
+    'CN' : 'b2vapi.bmwgroup.cn:8592',
+    'WD' : 'b2vapi.bmwgroup.com'
+}
             
-AUTH_API = 'https://{}/gcdm/oauth/token'
 VEHICLE_API = 'https://{}/api/vehicle'
+
+AUTH_URL = 'https://{server}/gcdm/oauth/token'
+BASE_URL = 'https://{server}/webapi/v1'
+VEHICLES_URL = BASE_URL + '/user/vehicles'
+VEHICLE_VIN_URL = VEHICLES_URL + '/{vin}'
+VEHICLE_STATUS_URL = VEHICLE_VIN_URL + '/status'
+
+REMOTE_SERVICE_STATUS_URL = VEHICLE_VIN_URL + '/serviceExecutionStatus?serviceType={service_type}'
+REMOTE_SERVICE_URL = VEHICLE_VIN_URL + "/executeService"
+VEHICLE_IMAGE_URL = VEHICLE_VIN_URL + "/image?width={width}&height={height}&view={view}"
+VEHICLE_POI_URL = VEHICLE_VIN_URL + '/sendpoi'
+
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0"
 
@@ -49,29 +58,15 @@ class ConnectedDrive(object):
         self.serverURL = cd_servers[region]
         self.bmwUsername = username
         self.bmwPassword = password
-        self.accessToken = None
-        self.tokenExpires = None
+        self.access_token = None
+        self.refresh_token = None
+        self.next_refresh = None
+        self.account_data = None
+        
+        self.get_tokens()
 
-        self.logger.debug('ConnectedDrive __init__: self.tokenExpires {}'.format(self.tokenExpires))
-        try:
-            if (datetime.datetime.now() >= datetime.datetime.strptime(self.tokenExpires,"%Y-%m-%d %H:%M:%S.%f")):
-                newTokenNeeded = True
-            else:
-                newTokenNeeded = False
-        except:
-            self.tokenExpires = 'NULL'
-            newTokenNeeded = True
 
-        if((self.tokenExpires == 'NULL') or (newTokenNeeded == True)):
-            self.generateCredentials()
-        else:
-            self.authenticated = True
-
-    def generateCredentials(self):
-        """
-        If previous token has expired, create a new one.
-        New method to get oauth token from bimmer_connected lib
-        """
+    def get_tokens(self):
 
         headers = {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -85,58 +80,85 @@ class ConnectedDrive(object):
                 "User-Agent": "okhttp/2.60",
         }
 
-        values = {
+        data = {
             'grant_type': 'password',
             'scope': 'authenticate_user vehicle_data remote_services',
             'username': self.bmwUsername,
             'password': self.bmwPassword,
         }
 
-        data = urllib.urlencode(values)
-        url = AUTH_API.format(self.serverURL)
-        r = requests.post(url, data=data, headers=headers,allow_redirects=False)
-        if (r.status_code != 200):
-            self.logger.debug('generateCredentials request code {}, url: {}'.format(r.status_code, url))
+        try:
+            r = requests.post(AUTH_URL.format(server=self.serverURL), data=data, headers=headers, allow_redirects=False)
+        except requests.RequestException, e:
+            self.authenticated = False
+            self.logger.error(u"get_tokens AUTH Error, exception = {}".format(e))
+            return
+        if (r.status_code != requests.codes.ok):
+            self.logger.error('get_tokens AUTH call failed, response code = {}'.format(r.status_code))
             self.authenticated = False
             return
-        myPayLoad=r.json()
+        
+        payload = r.json()
+        self.logger.threaddebug("Auth Info =\n{}".format(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': '))))
 
-        self.accessToken=myPayLoad['access_token']
-        self.tokenExpires = datetime.datetime.now() + datetime.timedelta(seconds=myPayLoad['expires_in'])
-        self.logger.debug('ConnectedDrive generateCredentials: token {}, Expires {}'.format(self.accessToken, self.tokenExpires))
+        self.access_token=payload['access_token']
+        self.refresh_token=payload['refresh_token']
+        expires_in = payload['expires_in']
+        self.logger.debug('ConnectedDrive get_tokens: token {}, Expires in {}'.format(self.access_token, expires_in))
+        self.next_refresh = time.time() + (float(expires_in) * 0.80)
         self.authenticated = True
-        return
-
                
-    def queryData(self, vin):
+    def update_vehicles(self):
+        self.logger.debug('ConnectedDrive update_vehicles')
+        
         headers = {
             "Content-Type": "application/json",
             "User-agent": USER_AGENT,
-            "Authorization" : "Bearer "+ self.accessToken
+            "Authorization" : "Bearer "+ self.access_token
             }
 
-        results = {}
-        base_url = VEHICLE_API.format(self.serverURL)
-        url = '{}/dynamic/v1/{}?offset=-60'.format(base_url, vin)
-        r = requests.get(url, headers=headers,allow_redirects=True)
-        results['comm_status'] = r.status_code
-        if (r.status_code== 200):
-            map=r.json() ['attributesMap']
-            for k, v in map.items():
-                results[k] = v
-        else:
-            self.logger.debug('queryData request code {}, url: {}'.format(r.status_code, url))
+        try:
+            r = requests.get(VEHICLES_URL.format(server=self.serverURL), headers=headers, allow_redirects=True)
+        except requests.RequestException, e:
+            self.logger.error(u"ConnectedDrive Account Update Error, exception = {}".format(e))
+            return
+            
+        if r.status_code != requests.codes.ok:
+            self.logger.error(u"ConnectedDrive Account Update failed, response = '{}'".format(r.text))                
+            return
+
+        self.account_data = r.json()    
+           
+        for v in self.account_data['vehicles']:
+            try:
+                r = requests.get(VEHICLE_STATUS_URL.format(server=self.serverURL, vin=v['vin']), headers=headers, allow_redirects=True)
+            except requests.RequestException, e:
+                self.logger.error(u"ConnectedDrive Vehicle Update Error, exception = {}".format(e))
+            else:
+                self.account_data[v['vin']] = r.json()['vehicleStatus']
+
+        self.logger.threaddebug("update_vehicles account_data =\n{}".format(json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': '))))
+
+    def get_vehicles(self):
+        self.logger.debug('ConnectedDrive get_vehicles')
+        return self.account_data['vehicles']
         
-        url = '{}/navigation/v1/{}'.format(base_url, vin)
-        r = requests.get(url, headers=headers,allow_redirects=True)
-        if (r.status_code == 200):
-            map=r.json()
-            self.logger.debug('queryData navigation map = {}'.format(map))
-            for k, v in map.items():
-                results[k] = v
+    def get_vehicle_data(self, vin):
+        self.logger.debug('ConnectedDrive get_vehicle_data: {}'.format(vin))
+        for v in self.account_data['vehicles']:
+            if v['vin'] == vin:
+                return v
+        return None
+        
+    def get_vehicle_status(self, vin):
+        self.logger.debug('ConnectedDrive get_vehicle_status: {}'.format(vin))
+        return self.account_data[vin]
+    
+    def dump_data(self):
 
-        return results
-
+        self.logger.info("Vehicle Data:\n" + json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': ')))
+             
+    
     def executeService(self, vin, service):
         # lock doors:     RDL
         # unlock doors:   RDU
@@ -163,7 +185,7 @@ class ConnectedDrive(object):
         headers = {
             "Content-Type": "application/json",
             "User-agent": USER_AGENT,
-            "Authorization" : "Bearer "+ self.accessToken
+            "Authorization" : "Bearer "+ self.access_token
             }
 
         #initalize vars
@@ -207,7 +229,7 @@ class ConnectedDrive(object):
         headers = {
             "Content-Type": "application/json",
             "User-agent": USER_AGENT,
-            "Authorization" : "Bearer "+ self.accessToken
+            "Authorization" : "Bearer "+ self.access_token
             }
 
         #initalize vars

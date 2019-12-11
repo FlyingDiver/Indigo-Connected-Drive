@@ -28,7 +28,7 @@ class Plugin(indigo.PluginBase):
                 
         self.updateFrequency = float(self.pluginPrefs.get('updateFrequency', "30")) *  60.0
         self.logger.debug(u"updateFrequency = {}".format(self.updateFrequency))
-        self.next_update = time.time() + self.updateFrequency
+        self.next_update = time.time()
         self.update_needed = False
 
         self.cd_accounts = {}
@@ -74,17 +74,47 @@ class Plugin(indigo.PluginBase):
                     self.update_needed = False
                     self.next_update = time.time() + self.updateFrequency
                 
+                    for accountID, account in self.cd_accounts.items():
+                        if time.time() > account.next_refresh:
+                            account.get_tokens()                    
+
+                        if account.authenticated:
+                            account.update_vehicles()
+                        else:
+                            self.logger.debug("ConnectedDrive account {} not authenticated, skipping update".format(accountID))
+
+                    # now update all the Indigo devices         
+                    
                     for devID, device in self.cd_vehicles.iteritems():
                         accountID = device.pluginProps["account"]
                         account = self.cd_accounts[int(accountID)]
-                        results = account.queryData(device.address)             
                         states_list = []
+                        results = account.get_vehicle_status(device.address)             
+                        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, results))        
                         for key in results:
-                            states_list.append({'key': key.strip(), 'value': results[key]})
+                            self.logger.threaddebug(u"{}: get_vehicle_status adding key {}".format(device.name, key))        
+                            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
+                                continue
+                            elif key == 'position':
+                                states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
+                                states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
+                                states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})                            
+                            else:
+                                states_list.append({'key': key.strip(), 'value': results[key]})
+
+                        results = account.get_vehicle_data(device.address)             
+                        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, results))        
+                        for key in results:
+                            self.logger.threaddebug(u"{}: get_vehicle_data adding key {}".format(device.name, key))        
+                            if key in ['breakdownNumber', 'dealer', 'vin']:
+                                continue
+                            else:
+                                states_list.append({'key': key.strip(), 'value': results[key]})
+                        
                         device.updateStatesOnServer(states_list)
                         self.logger.debug(u"{}: states updated".format(device.name))        
 
-                        
+                       
                 self.sleep(2.0)
 
         except self.StopThread:
@@ -94,7 +124,7 @@ class Plugin(indigo.PluginBase):
     ########################################
                 
     def deviceStartComm(self, dev):
-        self.logger.info(u"{}: Starting {} Device {}".format(dev.name, dev.deviceTypeId, dev.id))
+        self.logger.info(u"{}: Starting {} Device".format(dev.name, dev.deviceTypeId))
         dev.stateListOrDisplayStateIdChanged()
 
         if dev.deviceTypeId == "cdAccount":
@@ -134,7 +164,27 @@ class Plugin(indigo.PluginBase):
         retList.sort(key=lambda tup: tup[1])
         return retList
 
+    def get_vehicle_list(self, filter="", valuesDict=None, typeId="", targetId=0):
+        self.logger.threaddebug("get_vehicle_list: typeId = {}, targetId = {}, valuesDict = {}".format(typeId, targetId, valuesDict))
+        retList = []
+        accountID = valuesDict.get('account', None)
+        if not accountID:
+            return retList
+            
+        account = self.cd_accounts[int(accountID)]
+        vehicles = account.get_vehicles()
+        for v in vehicles:
+            retList.append((v['vin'], "{} {}".format(v['yearOfConstruction'], v['model'])))
+        retList.sort(key=lambda tup: tup[1])            
+        return retList
+
     # doesn't do anything, just needed to force other menus to dynamically refresh
     def menuChanged(self, valuesDict = None, typeId = None, devId = None):
         return valuesDict
     
+    def menuDumpVehicles(self):
+        self.logger.debug(u"menuDumpVehicles")
+        for accountID, account in self.cd_accounts.items():
+            account.dump_data()
+        return True
+

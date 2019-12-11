@@ -8,5 +8,9 @@
 
 <MenuItems>
     <SupportURL>https://forums.indigodomo.com/viewforum.php?f=295</SupportURL>
+    <MenuItem id="menu3">
+        <Name>Write Vehicle Data to Log</Name>
+        <CallbackMethod>menuDumpVehicles</CallbackMethod>
+    </MenuItem>
 </MenuItems>
 
