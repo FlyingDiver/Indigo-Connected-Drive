@@ -96,9 +96,13 @@ class Plugin(indigo.PluginBase):
                             if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
                                 continue
                             elif key == 'position':
-                                states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
-                                states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
-                                states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})                            
+                                try:
+                                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
+                                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
+                                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
+                                except:
+                                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
+                                                         
                             else:
                                 states_list.append({'key': key.strip(), 'value': results[key]})
 
