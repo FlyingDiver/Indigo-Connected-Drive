@@ -62,6 +62,7 @@ class ConnectedDrive(object):
         self.refresh_token = None
         self.next_refresh = None
         self.account_data = None
+        self.authenticated = False
         
         self.get_tokens()
 
@@ -142,7 +143,7 @@ class ConnectedDrive(object):
     def get_vehicles(self):
         self.logger.debug('ConnectedDrive get_vehicles')
         return self.account_data['vehicles']
-        
+
     def get_vehicle_data(self, vin):
         self.logger.debug('ConnectedDrive get_vehicle_data: {}'.format(vin))
         for v in self.account_data['vehicles']:
@@ -154,8 +155,8 @@ class ConnectedDrive(object):
         self.logger.debug('ConnectedDrive get_vehicle_status: {}'.format(vin))
         return self.account_data[vin]
     
-    def dump_data(self):
 
+    def dump_data(self):
         self.logger.info("Vehicle Data:\n" + json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': ')))
              
     
