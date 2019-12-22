@@ -85,39 +85,8 @@ class Plugin(indigo.PluginBase):
 
                     # now update all the Indigo devices         
                     
-                    for devID, device in self.cd_vehicles.iteritems():
-                        accountID = device.pluginProps["account"]
-                        account = self.cd_accounts[int(accountID)]
-                        states_list = []
-                        results = account.get_vehicle_status(device.address)             
-                        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, results))        
-                        for key in results:
-                            self.logger.threaddebug(u"{}: get_vehicle_status adding key {}".format(device.name, key))        
-                            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
-                                continue
-                            elif key == 'position':
-                                try:
-                                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
-                                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
-                                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
-                                except:
-                                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
-                                                         
-                            else:
-                                states_list.append({'key': key.strip(), 'value': results[key]})
-
-                        results = account.get_vehicle_data(device.address)             
-                        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, results))        
-                        for key in results:
-                            self.logger.threaddebug(u"{}: get_vehicle_data adding key {}".format(device.name, key))        
-                            if key in ['breakdownNumber', 'dealer', 'vin']:
-                                continue
-                            else:
-                                states_list.append({'key': key.strip(), 'value': results[key]})
-                        
-                        device.updateStatesOnServer(states_list)
-                        self.logger.debug(u"{}: states updated".format(device.name))        
-
+                    for devID in self.cd_vehicles:
+                        self.updateVehicle(devID)
                        
                 self.sleep(2.0)
 
@@ -129,12 +98,10 @@ class Plugin(indigo.PluginBase):
                 
     def deviceStartComm(self, dev):
         self.logger.info(u"{}: Starting {} Device".format(dev.name, dev.deviceTypeId))
-        dev.stateListOrDisplayStateIdChanged()
 
         if dev.deviceTypeId == "cdAccount":
                         
-            cdAccount = ConnectedDrive(dev.pluginProps["region"],  dev.pluginProps["username"],  dev.pluginProps["password"])
-            self.cd_accounts[dev.id] = cdAccount
+            self.cd_accounts[dev.id] = ConnectedDrive(dev.pluginProps["region"],  dev.pluginProps["username"],  dev.pluginProps["password"])
                                     
         elif dev.deviceTypeId == "cdVehicle":
             self.cd_vehicles[dev.id] = dev
@@ -142,6 +109,8 @@ class Plugin(indigo.PluginBase):
             
         else:
             self.logger.error(u"{}: deviceStartComm: Unknown device type: {}".format(dev.name, dev.deviceTypeId))
+
+        dev.stateListOrDisplayStateIdChanged()
 
             
     def deviceStopComm(self, dev):
@@ -152,6 +121,75 @@ class Plugin(indigo.PluginBase):
             return True
         return False
             
+    # =============================================================================
+    def getDeviceStateList(self, dev):
+        """
+        Assign data keys to device state names (Indigo)
+
+        The getDeviceStateList() method pulls out all the keys in self.finalDict and
+        assigns them to device states. It returns the modified stateList which is then
+        written back to the device in the main thread. This method is automatically
+        called by
+
+            stateListOrDisplayStateIdChanged()
+
+        and by Indigo when Triggers and Control Pages are built. Note that it's not
+        possible to override Indigo's sorting of devices states which will present them
+        as A, B, a, b.
+
+        -----
+
+        :param dev:
+        :return state_list:
+        """
+        
+        state_list = indigo.PluginBase.getDeviceStateList(self, dev)
+        self.logger.debug(u"{}: getDeviceStateList, base state_list = {}".format(dev.name, state_list))
+
+#        if dev.id in self.cd_vehicles.keys():
+#            for key in sorted(self.cd_vehicles[dev.id].finalDict.keys()):
+#                dynamic_state = self.getDeviceStateDictForStringType(unicode(key), unicode(key), unicode(key))
+#                state_list.append(dynamic_state)
+
+        self.logger.debug(u"{}: getDeviceStateList, final state_list = {}".format(dev.name, state_list))
+        return state_list
+
+
+    def updateVehicle(self, vehicleID):
+
+        device = indigo.devices[vehicleID]
+        accountID = device.pluginProps["account"]
+        account = self.cd_accounts[int(accountID)]
+        states_list = []
+        results = account.get_vehicle_status(device.address)             
+        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, results))        
+        for key in results:
+            self.logger.threaddebug(u"{}: get_vehicle_status adding key {}".format(device.name, key))        
+            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
+                continue
+            elif key == 'position':
+                try:
+                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
+                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
+                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
+                except:
+                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
+                                     
+            else:
+                states_list.append({'key': key.strip(), 'value': results[key]})
+
+        results = account.get_vehicle_data(device.address)             
+        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, results))        
+        for key in results:
+            self.logger.threaddebug(u"{}: get_vehicle_data adding key {}".format(device.name, key))        
+            if key in ['breakdownNumber', 'dealer', 'vin']:
+                continue
+            else:
+                states_list.append({'key': key.strip(), 'value': results[key]})
+    
+        device.updateStatesOnServer(states_list)
+        self.logger.debug(u"{}: states updated".format(device.name))        
+
 
     ########################################
     #

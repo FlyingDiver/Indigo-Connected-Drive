@@ -142,16 +142,26 @@ class ConnectedDrive(object):
     def get_vehicles(self):
         self.logger.debug('ConnectedDrive get_vehicles')
         return self.account_data['vehicles']
-        
+
     def get_vehicle_data(self, vin):
         self.logger.debug('ConnectedDrive get_vehicle_data: {}'.format(vin))
         for v in self.account_data['vehicles']:
             if v['vin'] == vin:
                 return v
         return None
-        
-    def get_vehicle_status(self, vin):
+
+    def get_vehicle_states(self, vin):
         self.logger.debug('ConnectedDrive get_vehicle_status: {}'.format(vin))
+            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
+                continue
+            elif key == 'position':
+                try:
+                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
+                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
+                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
+                except:
+                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
+                                     
         return self.account_data[vin]
     
     def dump_data(self):
