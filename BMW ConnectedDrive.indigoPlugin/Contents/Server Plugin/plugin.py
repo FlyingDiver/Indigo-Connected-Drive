@@ -80,8 +80,10 @@ class Plugin(indigo.PluginBase):
 
                         if account.authenticated:
                             account.update_vehicles()
+                            indigo.devices[accountID].updateStateImageOnServer(indigo.kStateImageSel.SensorOn)
                         else:
                             self.logger.debug("ConnectedDrive account {} not authenticated, skipping update".format(accountID))
+                            indigo.devices[accountID].updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)
 
                     # now update all the Indigo devices         
                     
@@ -102,9 +104,10 @@ class Plugin(indigo.PluginBase):
         if dev.deviceTypeId == "cdAccount":
                         
             self.cd_accounts[dev.id] = ConnectedDrive(dev.pluginProps["region"],  dev.pluginProps["username"],  dev.pluginProps["password"])
-                                    
+            dev.updateStateOnServer(key="authenticated", value=self.cd_accounts[dev.id].authenticated)
+                                   
         elif dev.deviceTypeId == "cdVehicle":
-            self.cd_vehicles[dev.id] = dev
+            self.cd_vehicles[dev.id] = None
             self.update_needed = True
             
         else:
@@ -120,40 +123,6 @@ class Plugin(indigo.PluginBase):
         if oldDevice.address != newDevice.address:
             return True
         return False
-            
-    # =============================================================================
-    def getDeviceStateList(self, dev):
-        """
-        Assign data keys to device state names (Indigo)
-
-        The getDeviceStateList() method pulls out all the keys in self.finalDict and
-        assigns them to device states. It returns the modified stateList which is then
-        written back to the device in the main thread. This method is automatically
-        called by
-
-            stateListOrDisplayStateIdChanged()
-
-        and by Indigo when Triggers and Control Pages are built. Note that it's not
-        possible to override Indigo's sorting of devices states which will present them
-        as A, B, a, b.
-
-        -----
-
-        :param dev:
-        :return state_list:
-        """
-        
-        state_list = indigo.PluginBase.getDeviceStateList(self, dev)
-        self.logger.debug(u"{}: getDeviceStateList, base state_list = {}".format(dev.name, state_list))
-
-#        if dev.id in self.cd_vehicles.keys():
-#            for key in sorted(self.cd_vehicles[dev.id].finalDict.keys()):
-#                dynamic_state = self.getDeviceStateDictForStringType(unicode(key), unicode(key), unicode(key))
-#                state_list.append(dynamic_state)
-
-        self.logger.debug(u"{}: getDeviceStateList, final state_list = {}".format(dev.name, state_list))
-        return state_list
-
 
     def updateVehicle(self, vehicleID):
 
@@ -161,34 +130,71 @@ class Plugin(indigo.PluginBase):
         accountID = device.pluginProps["account"]
         account = self.cd_accounts[int(accountID)]
         states_list = []
-        results = account.get_vehicle_status(device.address)             
-        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, results))        
-        for key in results:
-            self.logger.threaddebug(u"{}: get_vehicle_status adding key {}".format(device.name, key))        
-            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
-                continue
-            elif key == 'position':
-                try:
-                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
-                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
-                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
-                except:
-                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
-                                     
-            else:
-                states_list.append({'key': key.strip(), 'value': results[key]})
 
-        results = account.get_vehicle_data(device.address)             
-        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, results))        
-        for key in results:
-            self.logger.threaddebug(u"{}: get_vehicle_data adding key {}".format(device.name, key))        
-            if key in ['breakdownNumber', 'dealer', 'vin']:
-                continue
-            else:
-                states_list.append({'key': key.strip(), 'value': results[key]})
-    
+        data_results = account.get_vehicle_data(device.address)             
+        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, data_results))
+        self.dict_to_states(u"v_", data_results, states_list)      
+
+        status_results = account.get_vehicle_status(device.address)             
+        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, status_results))        
+        self.dict_to_states(u"s_", status_results, states_list)      
+
+        self.cd_vehicles[device.id] = states_list
+
+        device.stateListOrDisplayStateIdChanged()
+
+        drive_train = data_results['driveTrain']
+        if drive_train == "CONV":
+            status_value = status_results['fuelPercent']
+        elif drive_train == "PHEV":
+            status_value = status_results['chargingLevelHv']
+        elif drive_train == "BEV":
+            status_value = status_results['chargingLevelHv']
+
+        states_list.append({'key': 'status', 'value': status_value, 'uiValue': u"{}%".format(status_value)})
         device.updateStatesOnServer(states_list)
-        self.logger.debug(u"{}: states updated".format(device.name))        
+        self.logger.threaddebug(u"{}: states updated: {}".format(device.name, states_list))        
+        
+
+    def dict_to_states(self, prefix, ddict, states_list):
+         for key in ddict:
+            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'breakdownNumber', 'vin']:
+                continue
+            elif isinstance(ddict[key], dict):
+                self.dict_to_states(u"{}{}_".format(prefix, key), ddict[key], states_list)
+            else:
+                self.logger.threaddebug(u"dict_to_states adding {} -> {}".format(key, ddict[key]))        
+                states_list.append({'key': unicode(prefix + key.strip()), 'value': ddict[key]})
+   
+    
+    ########################################
+    #
+    # callback for state list changes, called from stateListOrDisplayStateIdChanged()
+    #
+    ########################################
+    def getDeviceStateList(self, device):
+        state_list = indigo.PluginBase.getDeviceStateList(self, device)
+        self.logger.threaddebug(u"{}: getDeviceStateList, base state_list = {}".format(device.name, state_list))
+
+        if device.id in self.cd_vehicles and self.cd_vehicles[device.id]:
+            
+            for item in self.cd_vehicles[device.id]:
+                key = item['key']
+                value = item['value']
+                if isinstance(value, (float, int)):
+                    dynamic_state = self.getDeviceStateDictForNumberType(unicode(key), unicode(key), unicode(key))
+                elif isinstance(value, (str, unicode)):
+                    dynamic_state = self.getDeviceStateDictForStringType(unicode(key), unicode(key), unicode(key))
+                elif isinstance(value, bool):
+                    dynamic_state = self.getDeviceStateDictForBoolTrueFalseType(unicode(key), unicode(key), unicode(key))
+                else:
+                    self.logger.debug(u"{}: getDeviceStateList, unknown type for key = {}".format(dev.name, key))
+                    continue
+                    
+                state_list.append(dynamic_state)
+
+        self.logger.threaddebug(u"{}: getDeviceStateList, final state_list = {}".format(device.name, state_list))
+        return state_list
 
 
     ########################################

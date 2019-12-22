@@ -62,6 +62,7 @@ class ConnectedDrive(object):
         self.refresh_token = None
         self.next_refresh = None
         self.account_data = None
+        self.authenticated = False
         
         self.get_tokens()
 
@@ -149,23 +150,13 @@ class ConnectedDrive(object):
             if v['vin'] == vin:
                 return v
         return None
-
-    def get_vehicle_states(self, vin):
+        
+    def get_vehicle_status(self, vin):
         self.logger.debug('ConnectedDrive get_vehicle_status: {}'.format(vin))
-            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'vin']:
-                continue
-            elif key == 'position':
-                try:
-                    states_list.append({'key': 'gps_heading', 'value': results[key]['heading']})
-                    states_list.append({'key': 'gps_lat', 'value': results[key]['lat']})
-                    states_list.append({'key': 'gps_lon', 'value': results[key]['lon']})   
-                except:
-                    self.logger.debug("Position key error, skipping gps states: {}".format(results[key]))
-                                     
         return self.account_data[vin]
     
-    def dump_data(self):
 
+    def dump_data(self):
         self.logger.info("Vehicle Data:\n" + json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': ')))
              
     

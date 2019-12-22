@@ -21,7 +21,14 @@
         		</List>
         	</Field>
         </ConfigUI>
-     </Device>
+        <States>
+            <State id="authenticated" readonly="true">
+                <ValueType boolType="YesNo">Boolean</ValueType>
+                <TriggerLabel>Authenticated</TriggerLabel>
+                <ControlPageLabel>Authenticated</ControlPageLabel>
+            </State>
+        </States>
+      </Device>
 
     <Device id="cdVehicle" type="custom">
         <Name>Connected Drive Vehicle</Name>
@@ -41,6 +48,12 @@
             </Field>
         </ConfigUI>    
         <States>
+            <State id="status">
+                <ValueType>String</ValueType>
+                <TriggerLabel>UI Status</TriggerLabel>
+                <ControlPageLabel>UI Status</ControlPageLabel>
+            </State>        
         </States>
+        <UiDisplayStateId>status</UiDisplayStateId>
     </Device> 
 </Devices>
