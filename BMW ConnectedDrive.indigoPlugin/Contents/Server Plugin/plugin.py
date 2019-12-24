@@ -181,14 +181,17 @@ class Plugin(indigo.PluginBase):
             for item in self.cd_vehicles[device.id]:
                 key = item['key']
                 value = item['value']
-                if isinstance(value, (float, int)):
+                if isinstance(value, bool):
+                    dynamic_state = self.getDeviceStateDictForBoolTrueFalseType(unicode(key), unicode(key), unicode(key))
+                    self.logger.threaddebug(u"{}: getDeviceStateList, adding Bool state {}, value {}".format(device.name, key, value))
+                elif isinstance(value, (float, int)):
                     dynamic_state = self.getDeviceStateDictForNumberType(unicode(key), unicode(key), unicode(key))
+                    self.logger.threaddebug(u"{}: getDeviceStateList, adding Number state {}, value {}".format(device.name, key, value))
                 elif isinstance(value, (str, unicode)):
                     dynamic_state = self.getDeviceStateDictForStringType(unicode(key), unicode(key), unicode(key))
-                elif isinstance(value, bool):
-                    dynamic_state = self.getDeviceStateDictForBoolTrueFalseType(unicode(key), unicode(key), unicode(key))
+                    self.logger.threaddebug(u"{}: getDeviceStateList, adding String state {}, value {}".format(device.name, key, value))
                 else:
-                    self.logger.debug(u"{}: getDeviceStateList, unknown type for key = {}".format(dev.name, key))
+                    self.logger.debug(u"{}: getDeviceStateList, unknown type for key = {}, value {}".format(device.name, key, value))
                     continue
                     
                 state_list.append(dynamic_state)
