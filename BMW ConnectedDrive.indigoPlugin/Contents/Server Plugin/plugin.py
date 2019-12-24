@@ -143,15 +143,18 @@ class Plugin(indigo.PluginBase):
 
         device.stateListOrDisplayStateIdChanged()
 
-        drive_train = data_results['driveTrain']
-        if drive_train == "CONV":
-            status_value = status_results['fuelPercent']
-        elif drive_train == "PHEV":
-            status_value = status_results['chargingLevelHv']
-        elif drive_train == "BEV":
-            status_value = status_results['chargingLevelHv']
-
-        states_list.append({'key': 'status', 'value': status_value, 'uiValue': u"{}%".format(status_value)})
+        try:
+            drive_train = data_results['driveTrain']
+            if drive_train == "CONV":
+                status_value = status_results['fuelPercent']
+            elif drive_train == "PHEV":
+                status_value = status_results['chargingLevelHv']
+            elif drive_train == "BEV":
+                status_value = status_results['chargingLevelHv']
+            states_list.append({'key': 'status', 'value': status_value, 'uiValue': u"{}%".format(status_value)})
+        except:
+            pass
+                    
         device.updateStatesOnServer(states_list)
         self.logger.threaddebug(u"{}: states updated: {}".format(device.name, states_list))        
         
