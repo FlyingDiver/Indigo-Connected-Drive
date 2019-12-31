@@ -8,6 +8,35 @@ import time
 
 from bmwcdapi import ConnectedDrive
 
+def liters2gallons(l):
+    return float(l) / 3.785411784
+
+def km2miles(km):
+    return float(km) * 0.62137
+    
+def no_convert(x):
+    return x
+ 
+status_format = {
+    "us": {
+        "chargingLevelHv":      (u"{}%", no_convert),
+        "doorLockState":        (u"{}", no_convert),
+        "fuelPercent":          (u"{}%", no_convert),
+        "mileage":              (u"{:.0f} miles", km2miles),
+        "remainingFuel":        (u"{:.1f} gal", liters2gallons),
+        "remainingRangeFuel":   (u"{:.0f} mi", km2miles),
+    },
+    "metric": {
+        "chargingLevelHv":      (u"{}%", no_convert),
+        "doorLockState":        (u"{}", no_convert),
+        "fuelPercent":          (u"{}%", no_convert),
+        "mileage":              (u"{} km", no_convert),
+        "remainingFuel":        (u"{} ltrs", no_convert),
+        "remainingRangeFuel":   (u"{} km", no_convert),
+    }
+}
+        
+   
 class Plugin(indigo.PluginBase):
 
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
@@ -114,15 +143,9 @@ class Plugin(indigo.PluginBase):
             self.logger.error(u"{}: deviceStartComm: Unknown device type: {}".format(dev.name, dev.deviceTypeId))
 
         dev.stateListOrDisplayStateIdChanged()
-
             
     def deviceStopComm(self, dev):
         self.logger.info(u"{}: Stopping {} Device {}".format( dev.name, dev.deviceTypeId, dev.id))
-
-    def didDeviceCommPropertyChange(self, oldDevice, newDevice):
-        if oldDevice.address != newDevice.address:
-            return True
-        return False
 
     def updateVehicle(self, vehicleID):
 
@@ -143,17 +166,11 @@ class Plugin(indigo.PluginBase):
 
         device.stateListOrDisplayStateIdChanged()
 
-        try:
-            drive_train = data_results['driveTrain']
-            if drive_train == "CONV":
-                status_value = status_results['fuelPercent']
-            elif drive_train == "PHEV":
-                status_value = status_results['chargingLevelHv']
-            elif drive_train == "BEV":
-                status_value = status_results['chargingLevelHv']
-            states_list.append({'key': 'status', 'value': status_value, 'uiValue': u"{}%".format(status_value)})
-        except:
-            pass
+        units = self.pluginPrefs.get('units', "us")
+        state_key = device.pluginProps["state_key"]
+        status_value = status_results[state_key]
+        ui_format, converter = status_format[units][state_key]
+        states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
                     
         device.updateStatesOnServer(states_list)
         self.logger.threaddebug(u"{}: states updated: {}".format(device.name, states_list))        
@@ -229,6 +246,25 @@ class Plugin(indigo.PluginBase):
         vehicles = account.get_vehicles()
         for v in vehicles:
             retList.append((v['vin'], "{} {}".format(v['yearOfConstruction'], v['model'])))
+        retList.sort(key=lambda tup: tup[1])            
+        return retList
+
+    def get_vehicle_state_list(self, filter="", valuesDict=None, typeId="", targetId=0):
+        self.logger.threaddebug("get_vehicle_state_list: typeId = {}, targetId = {}, valuesDict = {}".format(typeId, targetId, valuesDict))
+        retList = []
+        accountID = valuesDict.get('account', None)
+        if not accountID:
+            return retList
+            
+        account = self.cd_accounts[int(accountID)]
+        vin = valuesDict.get('address', None)
+        if not vin:
+            return retList
+            
+        vehicle_status = account.get_vehicle_status(vin)
+        for s in ['chargingLevelHv', 'fuelPercent', 'mileage', 'remainingFuel', 'remainingRangeFuel', 'doorLockState']:
+            if s in vehicle_status:
+                retList.append((s, s))
         retList.sort(key=lambda tup: tup[1])            
         return retList
 

@@ -46,6 +46,11 @@
                 <List class="self" method="get_vehicle_list" dynamicReload="true"/>
                 <CallbackMethod>menuChanged</CallbackMethod>
             </Field>
+            <Field id="state_key" type="menu">
+                <Label>State Key:</Label>
+                <List class="self" method="get_vehicle_state_list" dynamicReload="true"/>
+                <CallbackMethod>menuChanged</CallbackMethod>
+            </Field>
         </ConfigUI>    
         <States>
             <State id="status">
