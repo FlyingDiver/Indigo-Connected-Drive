@@ -17,6 +17,25 @@ def km2miles(km):
 def no_convert(x):
     return x
  
+def dict_to_states(prefix, the_dict, states_list):
+     for key in the_dict:
+        if isinstance(the_dict[key], list):
+            list_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list)
+        elif isinstance(the_dict[key], dict):
+            dict_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list)
+        else:
+            states_list.append({'key': unicode(prefix + key.strip()), 'value': the_dict[key]})
+   
+def list_to_states(prefix, the_list, states_list):
+     for i in range(len(the_list)):
+        if isinstance(the_list[i], list):
+            list_to_states(u"{}{}_".format(prefix, i), the_list[i], states_list)
+        elif isinstance(the_list[i], dict):
+            dict_to_states(u"{}{}_".format(prefix, i), the_list[i], states_list)
+        else:
+            states_list.append({'key': unicode(prefix + unicode(i)), 'value': the_list[i]})
+   
+
 status_format = {
     "us": {
         "chargingLevelHv":      (u"{}%", no_convert),
@@ -156,11 +175,11 @@ class Plugin(indigo.PluginBase):
 
         data_results = account.get_vehicle_data(device.address)             
         self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, data_results))
-        self.dict_to_states(u"v_", data_results, states_list)      
+        dict_to_states(u"v_", data_results, states_list)      
 
         status_results = account.get_vehicle_status(device.address)             
         self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, status_results))        
-        self.dict_to_states(u"s_", status_results, states_list)      
+        dict_to_states(u"s_", status_results, states_list)      
 
         self.cd_vehicles[device.id] = states_list
 
@@ -172,20 +191,12 @@ class Plugin(indigo.PluginBase):
         ui_format, converter = status_format[units][state_key]
         states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
                     
-        device.updateStatesOnServer(states_list)
-        self.logger.threaddebug(u"{}: states updated: {}".format(device.name, states_list))        
+        try:     
+            device.updateStatesOnServer(states_list)
+        except TypeError as err:
+            self.logger.error(u"{}: invalid state type in states_list: {}".format(device.name, states_list))   
         
 
-    def dict_to_states(self, prefix, ddict, states_list):
-         for key in ddict:
-            if key in ['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData', 'checkControlMessages', 'breakdownNumber', 'vin']:
-                continue
-            elif isinstance(ddict[key], dict):
-                self.dict_to_states(u"{}{}_".format(prefix, key), ddict[key], states_list)
-            else:
-                self.logger.threaddebug(u"dict_to_states adding {} -> {}".format(key, ddict[key]))        
-                states_list.append({'key': unicode(prefix + key.strip()), 'value': ddict[key]})
-   
     
     ########################################
     #
