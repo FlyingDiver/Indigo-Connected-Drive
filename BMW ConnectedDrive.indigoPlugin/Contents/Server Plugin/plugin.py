@@ -23,8 +23,9 @@ def dict_to_states(prefix, the_dict, states_list):
             list_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list)
         elif isinstance(the_dict[key], dict):
             dict_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list)
-        else:
+        elif the_dict[key]:
             states_list.append({'key': unicode(prefix + key.strip()), 'value': the_dict[key]})
+        
    
 def list_to_states(prefix, the_list, states_list):
      for i in range(len(the_list)):
