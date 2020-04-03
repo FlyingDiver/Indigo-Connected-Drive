@@ -135,8 +135,12 @@ class ConnectedDrive(object):
                 r = requests.get(VEHICLE_STATUS_URL.format(server=self.serverURL, vin=v['vin']), headers=headers, allow_redirects=True)
             except requests.RequestException, e:
                 self.logger.error(u"ConnectedDrive Vehicle Update Error, exception = {}".format(e))
-            else:
+                continue
+            try:
                 self.account_data[v['vin']] = r.json()['vehicleStatus']
+            except:
+                self.logger.debug('ConnectedDrive no vehicleStatus, data =\n{}'.format(r.json()))
+            
 
         self.logger.threaddebug("update_vehicles account_data =\n{}".format(json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': '))))
 
