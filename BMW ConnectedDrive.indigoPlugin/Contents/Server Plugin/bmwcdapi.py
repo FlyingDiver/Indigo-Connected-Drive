@@ -27,6 +27,7 @@ import requests
 import time
 import datetime
 import logging
+import indigo
 
 cd_servers = { 
     'NA' : 'b2vapi.bmwgroup.us',
@@ -129,10 +130,18 @@ class ConnectedDrive(object):
             return
 
         self.account_data = r.json()    
+
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        latLong=indigo.server.getLatitudeAndLongitude()
+        params = {
+            'deviceTime': timestamp,
+            'dlat': latLong[0],
+            'dlon': latLong[1],
+        }
            
         for v in self.account_data['vehicles']:
             try:
-                r = requests.get(VEHICLE_STATUS_URL.format(server=self.serverURL, vin=v['vin']), headers=headers, allow_redirects=True)
+                r = requests.get(VEHICLE_STATUS_URL.format(server=self.serverURL, vin=v['vin']), headers=headers, params=params, allow_redirects=True)
             except requests.RequestException, e:
                 self.logger.error(u"ConnectedDrive Vehicle Update Error, exception = {}".format(e))
                 continue
