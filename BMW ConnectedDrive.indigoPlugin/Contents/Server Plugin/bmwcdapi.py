@@ -167,10 +167,11 @@ class ConnectedDrive(object):
     def get_vehicle_status(self, vin):
         self.logger.debug('ConnectedDrive get_vehicle_status: {}'.format(vin))
         try:
-            return self.account_data[vin]
-        else:
+            data = self.account_data[vin]
+        except:
             return None
-
+        return data
+        
     def dump_data(self):
         self.logger.info("Vehicle Data:\n" + json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': ')))
              
