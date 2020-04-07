@@ -106,7 +106,7 @@ class ConnectedDrive(object):
         self.access_token=payload['access_token']
         self.refresh_token=payload['refresh_token']
         expires_in = payload['expires_in']
-        self.logger.debug('ConnectedDrive get_tokens: token {}, Expires in {}'.format(self.access_token, expires_in))
+        self.logger.debug('ConnectedDrive get_tokens Succesful, Expires in {}'.format(expires_in))
         self.next_refresh = time.time() + (float(expires_in) * 0.80)
         self.authenticated = True
                
@@ -130,6 +130,7 @@ class ConnectedDrive(object):
             return
 
         self.account_data = r.json()    
+        self.logger.threaddebug("Account Data =\n{}".format(json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': '))))
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
         latLong=indigo.server.getLatitudeAndLongitude()
@@ -145,12 +146,17 @@ class ConnectedDrive(object):
             except requests.RequestException, e:
                 self.logger.error(u"ConnectedDrive Vehicle Update Error, exception = {}".format(e))
                 continue
+
+            vehicle_data = r.json()    
+            self.logger.threaddebug("Vehicle Data for {} =\n{}".format(v['vin'], json.dumps( vehicle_data, sort_keys=True, indent=4, separators=(',', ': '))))
+
             try:
-                self.account_data[v['vin']] = r.json()['vehicleStatus']
+                vehicle_status = vehicle_data['vehicleStatus']
             except:
                 self.logger.debug('ConnectedDrive no vehicleStatus, data =\n{}'.format(r.json()))
+            else:
+                self.account_data[v['vin']] = vehicle_status
             
-
         self.logger.threaddebug("update_vehicles account_data =\n{}".format(json.dumps(self.account_data, sort_keys=True, indent=4, separators=(',', ': '))))
 
     def get_vehicles(self):
