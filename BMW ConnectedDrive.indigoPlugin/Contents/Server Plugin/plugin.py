@@ -175,20 +175,20 @@ class Plugin(indigo.PluginBase):
         states_list = []
 
         data_results = account.get_vehicle_data(device.address)             
-        self.logger.threaddebug(u"{}: get_vehicle_data for {} =\n{}".format(device.name, device.address, data_results))
         if data_results:
             dict_to_states(u"v_", data_results, states_list)      
 
         status_results = account.get_vehicle_status(device.address)             
-        self.logger.threaddebug(u"{}: get_vehicle_status for {} =\n{}".format(device.name, device.address, status_results)) 
         if status_results:       
-            dict_to_states(u"s_", status_results, states_list)      
-            units = self.pluginPrefs.get('units', "us")
-            state_key = device.pluginProps["state_key"]
-            status_value = status_results[state_key]
-            ui_format, converter = status_format[units][state_key]
-            states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
-
+            dict_to_states(u"s_", status_results, states_list)   
+            try:   
+                units = self.pluginPrefs.get('units', "us")
+                state_key = device.pluginProps["state_key"]
+                status_value = status_results[state_key]
+                ui_format, converter = status_format[units][state_key]
+                states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
+            except:
+                pass
         self.cd_vehicles[device.id] = states_list
         device.stateListOrDisplayStateIdChanged()
 
@@ -206,7 +206,7 @@ class Plugin(indigo.PluginBase):
     ########################################
     def getDeviceStateList(self, device):
         state_list = indigo.PluginBase.getDeviceStateList(self, device)
-        self.logger.threaddebug(u"{}: getDeviceStateList, base state_list = {}".format(device.name, state_list))
+#        self.logger.threaddebug(u"{}: getDeviceStateList, base state_list = {}".format(device.name, state_list))
 
         if device.id in self.cd_vehicles and self.cd_vehicles[device.id]:
             
@@ -228,7 +228,7 @@ class Plugin(indigo.PluginBase):
                     
                 state_list.append(dynamic_state)
 
-        self.logger.threaddebug(u"{}: getDeviceStateList, final state_list = {}".format(device.name, state_list))
+#        self.logger.threaddebug(u"{}: getDeviceStateList, final state_list = {}".format(device.name, state_list))
         return state_list
 
 

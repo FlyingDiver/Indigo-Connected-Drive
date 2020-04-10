@@ -167,7 +167,9 @@ class ConnectedDrive(object):
         self.logger.debug('ConnectedDrive get_vehicle_data: {}'.format(vin))
         for v in self.account_data['vehicles']:
             if v['vin'] == vin:
+                self.logger.threaddebug("get_vehicle_data for {} =\n{}".format(vin, json.dumps( v, sort_keys=True, indent=4, separators=(',', ': '))))
                 return v
+        self.logger.threaddebug("get_vehicle_data for {} Not Found".format(vin))
         return None
         
     def get_vehicle_status(self, vin):
