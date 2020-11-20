@@ -176,12 +176,15 @@ class Plugin(indigo.PluginBase):
 
         data_results = account.get_vehicle_data(device.address)             
         if data_results:
-            dict_to_states(u"v_", data_results, states_list)      
-
+            try:
+                dict_to_states(u"v_", data_results, states_list)      
+            except:
+                pass
+                
         status_results = account.get_vehicle_status(device.address)             
         if status_results:       
-            dict_to_states(u"s_", status_results, states_list)   
             try:   
+                dict_to_states(u"s_", status_results, states_list)   
                 units = self.pluginPrefs.get('units', "us")
                 state_key = device.pluginProps["state_key"]
                 status_value = status_results[state_key]
