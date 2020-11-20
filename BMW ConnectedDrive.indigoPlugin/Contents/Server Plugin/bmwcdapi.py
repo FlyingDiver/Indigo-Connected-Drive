@@ -30,11 +30,19 @@ import logging
 import indigo
 
 cd_servers = { 
-    'NA' : 'b2vapi.bmwgroup.us',
-    'CN' : 'b2vapi.bmwgroup.cn:8592',
-    'WD' : 'b2vapi.bmwgroup.com'
+    'NA' : "b2vapi.bmwgroup.us",
+    'CN' : "b2vapi.bmwgroup.cn:8592",
+    'WD' : "b2vapi.bmwgroup.com"
 }
-            
+
+
+GCDM_OAUTH_AUTHORIZATION = {
+     'NA': "Basic ZDc2NmI1MzctYTY1NC00Y2JkLWEzZGMtMGNhNTY3MmQ3Zjh"+"kOjE1ZjY5N2Y2LWE1ZDUtNGNhZC05OWQ5LTNhMTViYzdmMzk3Mw==",
+     'WD': "Basic ZDc2NmI1MzctYTY1NC00Y2JkLWEzZGMtMGNhNTY3MmQ3Zjh"+"kOjE1ZjY5N2Y2LWE1ZDUtNGNhZC05OWQ5LTNhMTViYzdmMzk3Mw==",
+     'CN': "Basic blF2NkNxdHhKdVhXUDc0eGYzQ0p3VUVQOjF6REh4NnVuNGN"+"EanliTEVOTjNreWZ1bVgya0VZaWdXUGNRcGR2RFJwSUJrN3JPSg=="
+ }
+
+ 
 VEHICLE_API = 'https://{}/api/vehicle'
 
 AUTH_URL = 'https://{server}/gcdm/oauth/token'
@@ -57,6 +65,7 @@ class ConnectedDrive(object):
         self.logger = logging.getLogger("Plugin.ConnectedDrive")
 
         self.serverURL = cd_servers[region]
+        self.authorizations = GCDM_OAUTH_AUTHORIZATION[region]
         self.bmwUsername = username
         self.bmwPassword = password
         self.access_token = None
@@ -75,11 +84,10 @@ class ConnectedDrive(object):
                 "Content-Length": "124",
                 "Connection": "Keep-Alive",
                 "Host": self.serverURL,
+                "Authorization": self.authorizations,
                 "Accept-Encoding": "gzip",
-                "Authorization": "Basic blF2NkNxdHhKdVhXUDc0eGYzQ0p3VUVQOjF6REh4NnVuNGNEanli"
-                                 "TEVOTjNreWZ1bVgya0VZaWdXUGNRcGR2RFJwSUJrN3JPSg==",
                 "Credentials": "nQv6CqtxJuXWP74xf3CJwUEP:1zDHx6un4cDjybLENN3kyfumX2kEYigWPcQpdvDRpIBk7rOJ",
-                "User-Agent": "okhttp/2.60",
+                "User-Agent": "okhttp/3.12.2",
         }
 
         data = {
@@ -89,6 +97,7 @@ class ConnectedDrive(object):
             'password': self.bmwPassword,
         }
 
+        self.logger.debug("Auth Request: url = {}, data = {}, headers = {}".format(AUTH_URL.format(server=self.serverURL), data, headers))
         try:
             r = requests.post(AUTH_URL.format(server=self.serverURL), data=data, headers=headers, allow_redirects=False)
         except requests.RequestException, e:
@@ -101,7 +110,7 @@ class ConnectedDrive(object):
             return
         
         payload = r.json()
-        self.logger.threaddebug("Auth Info =\n{}".format(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': '))))
+        self.logger.debug("Auth Info =\n{}".format(json.dumps(payload, sort_keys=True, indent=4, separators=(',', ': '))))
 
         self.access_token=payload['access_token']
         self.refresh_token=payload['refresh_token']
@@ -143,6 +152,8 @@ class ConnectedDrive(object):
         for v in self.account_data['vehicles']:
             try:
                 r = requests.get(VEHICLE_STATUS_URL.format(server=self.serverURL, vin=v['vin']), headers=headers, params=params, allow_redirects=True)
+            except TypeError, e:
+                continue
             except requests.RequestException, e:
                 self.logger.error(u"ConnectedDrive Vehicle Update Error, exception = {}".format(e))
                 continue
