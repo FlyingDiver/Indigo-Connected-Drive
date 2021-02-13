@@ -293,3 +293,18 @@ class Plugin(indigo.PluginBase):
             account.dump_data()
         return True
 
+
+    def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
+        self.logger.debug(u"sendCommandAction {} for {}".format(pluginAction.props["serviceCode"], vehicleDevice.name))
+        account = self.cd_accounts[int(vehicleDevice.pluginProps['account'])]
+        retCode = account.executeService(vehicleDevice.address, pluginAction.props["serviceCode"])
+        self.logger.debug(u"sendCommandAction retCode = {}".format(retCode))
+
+    def sendMessageAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
+        self.logger.debug(u"sendMessageAction for {}".format(vehicleDevice.name))
+        account = self.cd_accounts[int(vehicleDevice.pluginProps['account'])]
+        retCode = account.sendMessage(vehicleDevice.address, (pluginAction.props["msgSubject"], pluginAction.props["msgBody"]))
+        self.logger.debug(u"sendMessageAction retCode = {}".format(retCode))
+
+
+

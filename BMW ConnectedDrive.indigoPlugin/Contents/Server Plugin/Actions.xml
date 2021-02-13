@@ -1,4 +1,37 @@
 <?xml version="1.0"?>
 <Actions>
     <SupportURL>https://forums.indigodomo.com/viewforum.php?f=295</SupportURL>
-</Actions>
+    <Action id="sendCommand" deviceFilter="self.cdVehicle">
+        <Name>Send Command</Name>
+        <CallbackMethod>sendCommandAction</CallbackMethod>
+        <ConfigUI>
+        	<Field id="serviceCode" type="menu">
+        		<Label>Service:</Label>
+        		<List>
+        			<Option value="climate">Climate</Option>
+        			<Option value="lock">Lock</Option>
+        			<Option value="unlock">Unlock</Option>
+        			<Option value="light">Light</Option>
+        			<Option value="horn">Horn</Option>
+        		</List>
+        	</Field>
+       </ConfigUI>
+    </Action>
+    <Action id="sendMessage" deviceFilter="self.cdVehicle">
+        <Name>Send Message</Name>
+        <CallbackMethod>sendMessageAction</CallbackMethod>
+        <ConfigUI>
+			<Field id="msgSubject" type="textfield" default="">
+				<Label>Subject:</Label>
+			</Field>
+			<Field id="msgBody" type="textfield" default="">
+				<Label>Message:</Label>
+
+
+
+
+
+			</Field>
+       </ConfigUI>
+    </Action>
+ </Actions>
