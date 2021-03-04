@@ -133,3 +133,7 @@ dmypy.json
 /BMW-i-Remote-README.md at master · edent-BMW-i-Remote.webloc
 /vehicle data.py
 /.DS_Store
+
+bimmer_connected-dev/
+
+BMW ConnectedDrive.bbprojectd/
