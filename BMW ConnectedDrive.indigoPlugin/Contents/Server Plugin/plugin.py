@@ -6,8 +6,6 @@ import logging
 import requests
 import time
 
-from bmwcdapi import ConnectedDrive
-
 from subprocess import Popen, PIPE
 from threading import Thread
 
