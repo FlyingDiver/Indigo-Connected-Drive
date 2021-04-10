@@ -92,7 +92,6 @@ class Plugin(indigo.PluginBase):
         self.cd_accounts = {}
         self.cd_vehicles = {}
         self.vehicle_data = {}
-        self.vehicle_status = {}
         self.vehicle_states = {}
 
     def shutdown(self):
@@ -138,7 +137,7 @@ class Plugin(indigo.PluginBase):
                     # request update from each CD account
                     cmd = {'cmd': 'vehicles'} 
                     for devID in self.wrappers:
-                        self.wrapper_write(indigo.devices[devID], cmd)
+                        self.wrapper_write(indigo.devices[devID].id, cmd)
 
                 self.sleep(1.0)
 
@@ -148,10 +147,10 @@ class Plugin(indigo.PluginBase):
                 
 ################################################################################
 
-    def wrapper_write(self, device, msg):
+    def wrapper_write(self, deviceID, msg):
         jsonMsg = json.dumps(msg)
         self.logger.threaddebug(u"Send wrapper message: {}".format(jsonMsg))
-        self.wrappers[device.id].stdin.write(u"{}\n".format(jsonMsg))
+        self.wrappers[deviceID].stdin.write(u"{}\n".format(jsonMsg))
 
 
     def wrapper_read(self, acctDevID):
@@ -161,22 +160,23 @@ class Plugin(indigo.PluginBase):
             acctDevice = indigo.devices[acctDevID]
             data = json.loads(msg)
             self.logger.threaddebug(u"{}: Received wrapper message:\n{}".format(acctDevice.name, json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))))
+
             if data['msg'] == 'echo':
                 pass    
                 
             elif data['msg'] == 'status':
-                self.logger.info("{}: {}".format(acctDevice.name, data['status']))
+                self.logger.debug("{}: {}".format(acctDevice.name, data['status']))
                 acctDevice.updateStateOnServer(key="status", value=data['status'])
                 
             elif data['msg'] == 'error':
                 self.logger.error("{}: {}".format(acctDevice.name, data['error']))
+                acctDevice.updateStateOnServer(key="status", value="Error")
 
             elif data['msg'] == 'vehicle':
                 self.logger.debug("{}: Vehicle data message for: {}".format(acctDevice.name, data['vin']))
 
                 # save the data
-                self.vehicle_data[data['vin']] = data['properties']
-                self.vehicle_status[data['vin']] = data['status']
+                self.vehicle_data[data['vin']] = {'account': acctDevID, 'properties': data['properties'], 'status': data['status']}
                 
                 # If there's an Indigo device for this vehicle, update it
                 
@@ -301,7 +301,7 @@ class Plugin(indigo.PluginBase):
         retList = []
             
         for v in self.vehicle_data.values():
-            retList.append((v['vin'], "{} {}".format(v['yearOfConstruction'], v['model'])))
+            retList.append((v['properties']['vin'], "{} {}".format(v['properties']['yearOfConstruction'], v['properties']['model'])))
         retList.sort(key=lambda tup: tup[1])            
         return retList
 
@@ -313,7 +313,7 @@ class Plugin(indigo.PluginBase):
         if not vin:
             return retList
             
-        vehicle_status = self.vehicle_status[vin]
+        vehicle_status = self.vehicle_data[vin]['status']
         for s in ['chargingLevelHv', 'fuelPercent', 'mileage', 'remainingFuel', 'remainingRangeFuel', 'doorLockState']:
             if s in vehicle_status:
                 retList.append((s, s))
@@ -327,22 +327,13 @@ class Plugin(indigo.PluginBase):
     def menuDumpVehicles(self):
         for vin in self.vehicle_data:
             self.logger.info(u"Data for VIN {}:\n{}".format(vin, json.dumps(self.vehicle_data[vin], sort_keys=True, indent=4, separators=(',', ': '))))
-        for vin in self.vehicle_status:
-            self.logger.info(u"Status for VIN {}:\n{}".format(vin, json.dumps(self.vehicle_status[vin], sort_keys=True, indent=4, separators=(',', ': '))))
         return True
 
 
     def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
-        self.logger.debug(u"sendCommandAction {} for {}".format(pluginAction.props["serviceCode"], vehicleDevice.name))
-        account = self.cd_accounts[int(vehicleDevice.pluginProps['account'])]
-        retCode = account.executeService(vehicleDevice.address, pluginAction.props["serviceCode"])
-        self.logger.debug(u"sendCommandAction retCode = {}".format(retCode))
-
-    def sendMessageAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
-        self.logger.debug(u"sendMessageAction for {}".format(vehicleDevice.name))
-        account = self.cd_accounts[int(vehicleDevice.pluginProps['account'])]
-        retCode = account.sendMessage(vehicleDevice.address, (pluginAction.props["msgSubject"], pluginAction.props["msgBody"]))
-        self.logger.debug(u"sendMessageAction retCode = {}".format(retCode))
-
+        self.logger.debug(u"{}: sendCommandAction {}".format(vehicleDevice.name, pluginAction.props["serviceCode"]))
+        accountID = self.vehicle_data[vehicleDevice.address]['account']
+        cmd = {'cmd': pluginAction.props["serviceCode"]} 
+        self.wrapper_write(accountID, cmd)
 
 
