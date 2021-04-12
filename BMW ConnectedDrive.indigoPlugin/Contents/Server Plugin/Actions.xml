@@ -17,21 +17,4 @@
         	</Field>
        </ConfigUI>
     </Action>
-    <Action id="sendMessage" deviceFilter="self.cdVehicle">
-        <Name>Send Message</Name>
-        <CallbackMethod>sendMessageAction</CallbackMethod>
-        <ConfigUI>
-			<Field id="msgSubject" type="textfield" default="">
-				<Label>Subject:</Label>
-			</Field>
-			<Field id="msgBody" type="textfield" default="">
-				<Label>Message:</Label>
-
-
-
-
-
-			</Field>
-       </ConfigUI>
-    </Action>
  </Actions>

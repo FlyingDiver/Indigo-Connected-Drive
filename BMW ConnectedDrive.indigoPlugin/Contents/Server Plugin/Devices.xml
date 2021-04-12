@@ -15,20 +15,21 @@
         	<Field id="region" type="menu" defaultValue="NA">
         		<Label>Region:</Label>
         		<List>
-        			<Option value="NA">North America</Option>
-        			<Option value="CN">China</Option>
-        			<Option value="WD">Rest of World</Option>
+        			<Option value="north_america">North America</Option>
+        			<Option value="china">China</Option>
+        			<Option value="rest_of_world">Rest of World</Option>
         		</List>
         	</Field>
         </ConfigUI>
         <States>
-            <State id="authenticated" readonly="true">
-                <ValueType boolType="YesNo">Boolean</ValueType>
-                <TriggerLabel>Authenticated</TriggerLabel>
-                <ControlPageLabel>Authenticated</ControlPageLabel>
-            </State>
+			<State id="status">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Status</TriggerLabel>
+				<ControlPageLabel>Status</ControlPageLabel>
+			</State>
         </States>
-      </Device>
+    <UiDisplayStateId>status</UiDisplayStateId>
+    </Device>
 
     <Device id="cdVehicle" type="custom">
         <Name>Connected Drive Vehicle</Name>
@@ -36,11 +37,6 @@
 			<Field id="SupportsOnState" type="checkbox" defaultValue="false" hidden="true" />
 			<Field id="SupportsSensorValue" type="checkbox" defaultValue="true" hidden="true" />
 			<Field id="SupportsStatusRequest" type="checkbox" defaultValue="true" hidden="true" />
-            <Field id="account" type="menu">
-                <Label>Connected Drive Account:</Label>
-                <List class="self" method="get_account_list" dynamicReload="true"/>
-                <CallbackMethod>menuChanged</CallbackMethod>
-            </Field>
             <Field id="address" type="menu">
                 <Label>Vehicle:</Label>
                 <List class="self" method="get_vehicle_list" dynamicReload="true"/>
