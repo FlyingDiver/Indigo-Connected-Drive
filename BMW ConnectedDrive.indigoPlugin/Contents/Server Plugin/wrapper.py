@@ -1,14 +1,10 @@
 import asyncio
 import sys
 import json
-import bimmer_connected
-
-from aiohttp import ClientSession
-
-from pathlib import Path
-
 import requests
 
+from aiohttp import ClientSession
+from pathlib import Path
 from bimmer_connected.account import ConnectedDriveAccount
 from bimmer_connected.country_selector import get_region_from_name, valid_regions
 from bimmer_connected.vehicle import VehicleViewDirection
