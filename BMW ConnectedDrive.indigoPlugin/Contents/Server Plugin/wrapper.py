@@ -2,6 +2,7 @@ import asyncio
 import sys
 import json
 import requests
+import logging
 
 from aiohttp import ClientSession
 from pathlib import Path
@@ -47,7 +48,7 @@ async def main(args) -> None:
                 for vehicle in account.vehicles:
                     msg_write(json.dumps({'msg': 'vehicle', 'vin': vehicle.vin, 'properties': vehicle.attributes, 'status': vehicle.state.attributes["STATUS"]}))
 
-            elif cmd == 'light_flash':
+            elif cmd == 'light':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
@@ -56,7 +57,7 @@ async def main(args) -> None:
                 print("light_flash: {}".format(status), file=sys.stderr)
                 msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
 
-            elif cmd == 'door_lock':
+            elif cmd == 'lock':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
@@ -65,7 +66,7 @@ async def main(args) -> None:
                 print("door_lock: {}".format(status), file=sys.stderr)
                 msg_write(json.dumps({'msg': 'status', 'status': f"door_lock for {request['vin']} is {status.state}"}))
 
-            elif cmd == 'door_unlock':
+            elif cmd == 'unlock':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
@@ -83,7 +84,7 @@ async def main(args) -> None:
                 print("horn: {}".format(status), file=sys.stderr)
                 msg_write(json.dumps({'msg': 'status', 'status': f"horn for {request['vin']} is {status.state}"}))
 
-            elif cmd == 'air_conditioning':
+            elif cmd == 'climate':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
@@ -104,4 +105,13 @@ async def main(args) -> None:
     
 # actual start of the program
     
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+#handler = logging.StreamHandler()
+#handler.setLevel(logging.DEBUG)
+#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#handler.setFormatter(formatter)
+logger.addHandler(logging.StreamHandler())
+
 asyncio.run(main(sys.argv))

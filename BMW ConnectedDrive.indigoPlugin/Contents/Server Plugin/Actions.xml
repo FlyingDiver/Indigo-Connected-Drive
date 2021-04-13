@@ -8,11 +8,11 @@
         	<Field id="serviceCode" type="menu">
         		<Label>Service:</Label>
         		<List>
-        			<Option value="climate">Climate</Option>
-        			<Option value="lock">Lock</Option>
-        			<Option value="unlock">Unlock</Option>
-        			<Option value="light">Light</Option>
-        			<Option value="horn">Horn</Option>
+        			<Option value="climate">Air Conditioning</Option>
+        			<Option value="lock">Door Lock</Option>
+        			<Option value="unlock">Door Unlock</Option>
+        			<Option value="light">Light Flash</Option>
+        			<Option value="horn">Beep Horn</Option>
         		</List>
         	</Field>
        </ConfigUI>
