@@ -32,7 +32,7 @@ async def main(args) -> None:
                       
         for line in sys.stdin:
 
-            print("Got: {}".format(line), file=sys.stderr)
+            logging.debug("Wrapper got command: {}".format(line.rstrip()))
             
             request = json.loads(line.rstrip())
             msg_write(json.dumps({'msg': 'echo', 'request': request}))
@@ -40,10 +40,12 @@ async def main(args) -> None:
             
             if cmd == 'stop':
                 msg_write(json.dumps({'msg': 'status', 'status': "Stopped"}))
+                logging.debug("Wrapper stopping")
                 break
 
             elif cmd == 'vehicles':
                 account.update_vehicle_states()
+                logging.debug("vehicles command: {} vehicles".format(len(account.vehicles)))
                 msg_write(json.dumps({'msg': 'status', 'status': "Update OK"}))
                 for vehicle in account.vehicles:
                     msg_write(json.dumps({'msg': 'vehicle', 'vin': vehicle.vin, 'properties': vehicle.attributes, 'status': vehicle.state.attributes["STATUS"]}))
@@ -54,7 +56,7 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_light_flash()
-                print("light_flash: {}".format(status), file=sys.stderr)
+                logging.debug("light command status: {}".format(status))
                 msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
 
             elif cmd == 'lock':
@@ -63,7 +65,7 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_door_lock()
-                print("door_lock: {}".format(status), file=sys.stderr)
+                logging.debug("lock command status: {}".format(status))
                 msg_write(json.dumps({'msg': 'status', 'status': f"door_lock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'unlock':
@@ -72,7 +74,7 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_door_unlock()
-                print("door_unlock: {}".format(status), file=sys.stderr)
+                logging.debug("unlock command status: {}".format(status))
                 msg_write(json.dumps({'msg': 'status', 'status': f"door_unlock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'horn':
@@ -81,7 +83,7 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_horn()
-                print("horn: {}".format(status), file=sys.stderr)
+                logging.debug("horn command status: {}".format(status))
                 msg_write(json.dumps({'msg': 'status', 'status': f"horn for {request['vin']} is {status.state}"}))
 
             elif cmd == 'climate':
@@ -90,28 +92,12 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_air_conditioning()
-                print("air_conditioning: {}".format(status), file=sys.stderr)
+                logging.debug("climate command status: {}".format(status))
                 msg_write(json.dumps({'msg': 'status', 'status': f"air_conditioning for {request['vin']} is {status.state}"}))
 
-#             elif cmd == 'send_poi':
-#                 vehicle = account.get_vehicle(request['vin'])
-#                 if not vehicle:
-#                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
-#                     return
-#                 poi = PointOfInterest(request['latitude'], request['longitude'], request['name'], 
-#                         request['street'], request['city'], request['postalcode'], request['country'])
-#                 vehicle.send_poi(poi)
-# 
     
 # actual start of the program
     
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-
-#handler = logging.StreamHandler()
-#handler.setLevel(logging.DEBUG)
-#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#handler.setFormatter(formatter)
-logger.addHandler(logging.StreamHandler())
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=int(sys.argv[4]))
 
 asyncio.run(main(sys.argv))

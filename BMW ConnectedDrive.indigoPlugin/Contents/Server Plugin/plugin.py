@@ -148,8 +148,16 @@ class Plugin(indigo.PluginBase):
     def wrapper_write(self, deviceID, msg):
         jsonMsg = json.dumps(msg)
         self.logger.threaddebug(u"Send wrapper message: {}".format(jsonMsg))
-        self.wrappers[deviceID].stdin.write(u"{}\n".format(jsonMsg))
-
+        try:
+            self.wrappers[deviceID].stdin.write(u"{}\n".format(jsonMsg))
+        except IOError as err:
+            dev = indigo.devices[deviceID]
+            self.logger.debug(u"{}: IOError in wrapper_write: {}".format(dev.name, err))
+            self.deviceStopComm(dev)
+            self.sleep(1.0)
+            self.deviceStartComm(dev)
+            
+            
 
     def wrapper_read(self, acctDevID):
         wrapper = self.wrappers[acctDevID]
@@ -235,14 +243,9 @@ class Plugin(indigo.PluginBase):
             self.cd_accounts[device.id] = device.name        
             
             try:
-                # Start up the wrapper task   
-#                argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
-#                self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
-#                self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, close_fds=True, bufsize=1, universal_newlines=True)
-                
-                argList = ['/bin/bash', '-c', "source .venv/bin/activate && python ./wrapper.py {} {} {}".format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'])]
+                # Start up the wrapper task in the virtual environment
+                argList = ['/bin/bash', '-c', 'source .venv/bin/activate && python ./wrapper.py {} {} {} {}'.format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)]
                 self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, shell=False, close_fds=True, bufsize=1, universal_newlines=True)
-
 
             except:
                 raise
@@ -264,7 +267,10 @@ class Plugin(indigo.PluginBase):
         self.logger.info(u"{}: Stopping {} Device {}".format( device.name, device.deviceTypeId, device.id))
 
         if device.deviceTypeId == "cdAccount":
-            self.wrappers[device.id].terminate()
+            try:
+                self.wrappers[device.id].terminate()
+            except:
+                pass
 
     
     ########################################
