@@ -156,7 +156,12 @@ class Plugin(indigo.PluginBase):
         while True:
             msg = wrapper.stdout.readline()
             acctDevice = indigo.devices[acctDevID]
-            data = json.loads(msg)
+            try:
+                data = json.loads(msg)
+            except:
+                self.logger.debug(u"wrapper_read JSON decode error: {}".format(msg))
+                return
+                
             self.logger.threaddebug(u"{}: Received wrapper message:\n{}".format(acctDevice.name, json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))))
 
             if data['msg'] == 'echo':
@@ -231,9 +236,14 @@ class Plugin(indigo.PluginBase):
             
             try:
                 # Start up the wrapper task   
-                argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
-                self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
-                self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, close_fds=True, bufsize=1, universal_newlines=True)
+#                argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
+#                self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
+#                self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, close_fds=True, bufsize=1, universal_newlines=True)
+                
+                argList = ['/bin/bash', '-c', "source .venv/bin/activate && python ./wrapper.py {} {} {}".format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'])]
+                self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, shell=False, close_fds=True, bufsize=1, universal_newlines=True)
+
+
             except:
                 raise
 
@@ -329,9 +339,9 @@ class Plugin(indigo.PluginBase):
 
 
     def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
-        self.logger.debug(u"{}: sendCommandAction {}".format(vehicleDevice.name, pluginAction.props["serviceCode"]))
+        self.logger.debug(u"{}: sendCommandAction {} for vin {}".format(vehicleDevice.name, pluginAction.props["serviceCode"], vehicleDevice.address))
         accountID = self.vehicle_data[vehicleDevice.address]['account']
-        cmd = {'cmd': pluginAction.props["serviceCode"]} 
+        cmd = {'cmd': pluginAction.props["serviceCode"], 'vin': vehicleDevice.address} 
         self.wrapper_write(accountID, cmd)
 
 

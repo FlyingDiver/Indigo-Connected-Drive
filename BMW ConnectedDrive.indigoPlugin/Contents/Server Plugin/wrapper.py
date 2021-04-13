@@ -31,6 +31,8 @@ async def main(args) -> None:
                       
         for line in sys.stdin:
 
+            print("Got: {}".format(line), file=sys.stderr)
+            
             request = json.loads(line.rstrip())
             msg_write(json.dumps({'msg': 'echo', 'request': request}))
             cmd = request['cmd']
@@ -51,6 +53,7 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_light_flash()
+                print("light_flash: {}".format(status), file=sys.stderr)
                 msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
 
             elif cmd == 'door_lock':
@@ -59,7 +62,8 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_door_lock()
-                msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
+                print("door_lock: {}".format(status), file=sys.stderr)
+                msg_write(json.dumps({'msg': 'status', 'status': f"door_lock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'door_unlock':
                 vehicle = account.get_vehicle(request['vin'])
@@ -67,7 +71,8 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_door_unlock()
-                msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
+                print("door_unlock: {}".format(status), file=sys.stderr)
+                msg_write(json.dumps({'msg': 'status', 'status': f"door_unlock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'horn':
                 vehicle = account.get_vehicle(request['vin'])
@@ -75,7 +80,8 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_horn()
-                msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
+                print("horn: {}".format(status), file=sys.stderr)
+                msg_write(json.dumps({'msg': 'status', 'status': f"horn for {request['vin']} is {status.state}"}))
 
             elif cmd == 'air_conditioning':
                 vehicle = account.get_vehicle(request['vin'])
@@ -83,7 +89,8 @@ async def main(args) -> None:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
                 status = vehicle.remote_services.trigger_remote_air_conditioning()
-                msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
+                print("air_conditioning: {}".format(status), file=sys.stderr)
+                msg_write(json.dumps({'msg': 'status', 'status': f"air_conditioning for {request['vin']} is {status.state}"}))
 
 #             elif cmd == 'send_poi':
 #                 vehicle = account.get_vehicle(request['vin'])
