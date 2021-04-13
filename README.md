@@ -11,3 +11,11 @@ Confirm Python version:
 
 `% /usr/bin/python3 --version`    
 `Python 3.8.2`
+
+Additional Python packages will need to be installed:
+
+```
+sudo /usr/bin/pip3 install requests
+sudo /usr/bin/pip3 install aiohttp
+sudo /usr/bin/pip3 install asyncio
+```  
