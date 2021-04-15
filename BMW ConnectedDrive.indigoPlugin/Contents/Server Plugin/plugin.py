@@ -244,10 +244,11 @@ class Plugin(indigo.PluginBase):
 
             # Start up the wrapper task   
             try:
-                if not bool(self.pluginPrefs.get("useVenv", False)):
-                    argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
+                if bool(self.pluginPrefs.get("useVenv", True)):
+                    argList = ['/bin/bash', '-c', 'source .venv/bin/activate && {} ./wrapper.py {} {} {} {}'.format(self.pluginPrefs.get("py3path", "/usr/bin/python3"), 
+                                                                                                                    device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)]
                 else:
-                    argList = ['/bin/bash', '-c', 'source .venv/bin/activate && python ./wrapper.py {} {} {} {}'.format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)]
+                    argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py {} {} {} {}'.format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)] 
 
                 self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
                 self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, shell=False, close_fds=True, bufsize=1, universal_newlines=True)
