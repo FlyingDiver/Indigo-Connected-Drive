@@ -241,10 +241,15 @@ class Plugin(indigo.PluginBase):
 
         if device.deviceTypeId == "cdAccount":
             self.cd_accounts[device.id] = device.name        
-            
+
+            # Start up the wrapper task   
             try:
-                # Start up the wrapper task in the virtual environment
-                argList = ['/bin/bash', '-c', 'source .venv/bin/activate && python ./wrapper.py {} {} {} {}'.format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)]
+                if not bool(self.pluginPrefs.get("useVenv", False)):
+                    argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
+                else:
+                    argList = ['/bin/bash', '-c', 'source .venv/bin/activate && python ./wrapper.py {} {} {} {}'.format(device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region'], self.logLevel)]
+
+                self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
                 self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, shell=False, close_fds=True, bufsize=1, universal_newlines=True)
 
             except:

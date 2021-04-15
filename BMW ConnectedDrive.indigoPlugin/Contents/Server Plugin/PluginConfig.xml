@@ -31,5 +31,8 @@
     <Field id="py3path" type="textfield" default="/usr/bin/python3">
         <Label>Python3 path:</Label>
     </Field>
- 
+    <Field id="useVenv" type="checkbox" defaultValue="false">
+        <Label>Use Python Virtual Environment</Label>
+    </Field>
+
 </PluginConfig>
