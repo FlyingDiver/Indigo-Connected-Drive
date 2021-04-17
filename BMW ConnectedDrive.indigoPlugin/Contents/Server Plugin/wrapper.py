@@ -55,46 +55,75 @@ async def main(args) -> None:
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
-                status = vehicle.remote_services.trigger_remote_light_flash()
-                logging.debug("light command status: {}".format(status))
-                msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
-
+                    
+                try:
+                    status = vehicle.remote_services.trigger_remote_light_flash()
+                except IOError as err:
+                    logging.debug(u"light command error: {}".format(err))
+                    msg_write(json.dumps({'msg': 'error', 'error': f"light_flash for {request['vin']} errror {err}"}))
+                else:
+                    logging.debug("light command status: {}".format(status))
+                    msg_write(json.dumps({'msg': 'status', 'status': f"light_flash for {request['vin']} is {status.state}"}))
+                
             elif cmd == 'lock':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
-                status = vehicle.remote_services.trigger_remote_door_lock()
-                logging.debug("lock command status: {}".format(status))
-                msg_write(json.dumps({'msg': 'status', 'status': f"door_lock for {request['vin']} is {status.state}"}))
+
+                try:
+                    status = vehicle.remote_services.trigger_remote_door_lock()
+                except IOError as err:
+                    logging.debug(u"lock command error: {}".format(err))
+                    msg_write(json.dumps({'msg': 'error', 'error': f"door_lock for {request['vin']} errror {err}"}))
+                else:
+                    logging.debug("lock command status: {}".format(status))
+                    msg_write(json.dumps({'msg': 'status', 'status': f"door_lock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'unlock':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
-                status = vehicle.remote_services.trigger_remote_door_unlock()
-                logging.debug("unlock command status: {}".format(status))
-                msg_write(json.dumps({'msg': 'status', 'status': f"door_unlock for {request['vin']} is {status.state}"}))
+
+                try:
+                    status = vehicle.remote_services.trigger_remote_door_unlock()
+                except IOError as err:
+                    logging.debug(u"unlock command error: {}".format(err))
+                    msg_write(json.dumps({'msg': 'error', 'error': f"door_unlock for {request['vin']} errror {err}"}))
+                else:
+                    logging.debug("unlock command status: {}".format(status))
+                    msg_write(json.dumps({'msg': 'status', 'status': f"door_unlock for {request['vin']} is {status.state}"}))
 
             elif cmd == 'horn':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
-                status = vehicle.remote_services.trigger_remote_horn()
-                logging.debug("horn command status: {}".format(status))
-                msg_write(json.dumps({'msg': 'status', 'status': f"horn for {request['vin']} is {status.state}"}))
+
+                try:
+                    status = vehicle.remote_services.trigger_remote_horn()
+                except IOError as err:
+                    logging.debug(u"horn command error: {}".format(err))
+                    msg_write(json.dumps({'msg': 'error', 'error': f"horn for {request['vin']} errror {err}"}))
+                else:
+                    logging.debug("horn command status: {}".format(status))
+                    msg_write(json.dumps({'msg': 'status', 'status': f"horn for {request['vin']} is {status.state}"}))
 
             elif cmd == 'climate':
                 vehicle = account.get_vehicle(request['vin'])
                 if not vehicle:
                     msg_write(json.dumps({'msg': 'error', 'error': f"Vehicle with VIN '{request['vin']}' not found."}))
                     return
-                status = vehicle.remote_services.trigger_remote_air_conditioning()
-                logging.debug("climate command status: {}".format(status))
-                msg_write(json.dumps({'msg': 'status', 'status': f"air_conditioning for {request['vin']} is {status.state}"}))
 
+                try:
+                    status = vehicle.remote_services.trigger_remote_air_conditioning()
+                except IOError as err:
+                    logging.debug(u"climate command error: {}".format(err))
+                    msg_write(json.dumps({'msg': 'error', 'error': f"climate for {request['vin']} errror {err}"}))
+                else:
+                    logging.debug("climate command status: {}".format(status))
+                    msg_write(json.dumps({'msg': 'status', 'status': f"climate for {request['vin']} is {status.state}"}))
     
 # actual start of the program
     
