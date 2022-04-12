@@ -3,21 +3,20 @@
 import datetime
 import logging
 from enum import Enum
-from typing import List
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
-from bimmer_connected.const import SERVICE_STATUS
+from bimmer_connected.coord_convert import gcj2wgs
+
+from bimmer_connected.country_selector import Regions
+from bimmer_connected.utils import SerializableBaseClass, parse_datetime
+
+if TYPE_CHECKING:
+    from bimmer_connected.account import ConnectedDriveAccount
 
 _LOGGER = logging.getLogger(__name__)
 
 
-LIDS = ['doorDriverFront', 'doorPassengerFront', 'doorDriverRear', 'doorPassengerRear',
-        'hood', 'trunk']
-
-WINDOWS = ['windowDriverFront', 'windowPassengerFront', 'windowDriverRear', 'windowPassengerRear', 'rearWindow',
-           'sunroof']
-
-
-class LidState(Enum):
+class LidState(str, Enum):
     """Possible states of the hatch, trunk, doors, windows, sun roof."""
     CLOSED = 'CLOSED'
     OPEN = 'OPEN'
@@ -26,40 +25,38 @@ class LidState(Enum):
     INVALID = 'INVALID'
 
 
-class LockState(Enum):
+class LockState(str, Enum):
     """Possible states of the door locks."""
     LOCKED = 'LOCKED'
     SECURED = 'SECURED'
     SELECTIVE_LOCKED = 'SELECTIVE_LOCKED'
     UNLOCKED = 'UNLOCKED'
+    UNKNOWN = 'UNKNOWN'
 
 
-class ParkingLightState(Enum):
-    """Possible states of the parking lights"""
-    LEFT = 'LEFT'
-    RIGHT = 'RIGHT'
-    OFF = 'OFF'
-
-
-class ConditionBasedServiceStatus(Enum):
+class ConditionBasedServiceStatus(str, Enum):
     """Status of the condition based services."""
     OK = 'OK'
     OVERDUE = 'OVERDUE'
     PENDING = 'PENDING'
 
 
-class ChargingState(Enum):
+class ChargingState(str, Enum):
     """Charging state of electric vehicle."""
+    DEFAULT = 'DEFAULT'
     CHARGING = 'CHARGING'
     ERROR = 'ERROR'
+    COMPLETE = 'COMPLETE'
+    FULLY_CHARGED = 'FULLY_CHARGED'
     FINISHED_FULLY_CHARGED = 'FINISHED_FULLY_CHARGED'
     FINISHED_NOT_FULL = 'FINISHED_NOT_FULL'
     INVALID = 'INVALID'
     NOT_CHARGING = 'NOT_CHARGING'
+    PLUGGED_IN = 'PLUGGED_IN'
     WAITING_FOR_CHARGING = 'WAITING_FOR_CHARGING'
 
 
-class CheckControlMessage:
+class CheckControlMessage(SerializableBaseClass):
     """Check control message sent from the server.
 
     This class provides a nicer API than parsing the JSON format directly.
@@ -71,22 +68,109 @@ class CheckControlMessage:
     @property
     def description_long(self) -> str:
         """Long description of the check control message."""
-        return self._ccm_dict["ccmDescriptionLong"]
+        return self._ccm_dict.get("longDescription")
 
     @property
     def description_short(self) -> str:
         """Short description of the check control message."""
-        return self._ccm_dict["ccmDescriptionShort"]
+        return self._ccm_dict.get("title")
 
     @property
     def ccm_id(self) -> int:
         """id of the check control message."""
-        return int(self._ccm_dict["ccmId"])
+        return self._ccm_dict.get("id")
 
     @property
-    def mileage(self) -> int:
-        """Mileage of the vehicle when the check control message appeared."""
-        return int(self._ccm_dict["ccmMileage"])
+    def state(self) -> int:
+        """state of the check control message."""
+        return self._ccm_dict.get("state")
+
+
+class FuelIndicator(SerializableBaseClass):
+    """Parsed fuel indicators.
+
+    This class provides a nicer API than parsing the JSON format directly.
+    """
+
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
+
+    def __init__(self, fuel_indicator_dict: List):
+        self.remaining_range_fuel: Optional[Tuple[int, str]] = None
+        self.remaining_range_electric: Optional[Tuple[int, str]] = None
+        self.remaining_range_combined: Optional[Tuple[int, str]] = None
+        self.remaining_charging_time: float = None
+        self.charging_status: str = None
+        self.charging_start_time: datetime.datetime = None
+        self.charging_end_time: datetime.datetime = None
+        self.charging_time_label: str = None
+
+        self._map_to_attributes(fuel_indicator_dict)
+
+    def _map_to_attributes(self, fuel_indicators: List[Dict]) -> None:
+        """Parse fuel indicators based on Ids."""
+        for indicator in fuel_indicators:
+            if (indicator.get("rangeIconId") or indicator.get("infoIconId")) == 59691:  # Combined
+                self.remaining_range_combined = self._parse_to_tuple(indicator)
+            elif (indicator.get("rangeIconId") or indicator.get("infoIconId")) == 59683:  # Electric
+                self.remaining_range_electric = self._parse_to_tuple(indicator)
+                self.remaining_range_combined = self.remaining_range_combined or self.remaining_range_electric
+
+                self.charging_time_label = indicator["infoLabel"]
+                self.charging_status = indicator["chargingStatusType"]
+
+                if indicator.get("chargingStatusType") in ["CHARGING", "PLUGGED_IN"]:
+                    self._parse_charging_timestamp(indicator)
+
+            elif (indicator.get("rangeIconId") or indicator.get("infoIconId")) == 59681:  # Fuel
+                self.remaining_range_fuel = self._parse_to_tuple(indicator)
+                self.remaining_range_combined = self.remaining_range_combined or self.remaining_range_fuel
+
+    def _parse_charging_timestamp(self, indicator: Dict) -> None:
+        """Parse charging end time string to timestamp."""
+        charging_start_time: datetime.datetime = None
+        charging_end_time: datetime.datetime = None
+        remaining_charging_time: int = None
+
+        # Only calculate charging end time if infolabel is like '100% at ~11:04am'
+        # Other options: 'Charging', 'Starts at ~09:00am' (but not handled here)
+
+        time_str = indicator["infoLabel"].split("~")[-1].strip()
+        try:
+            time_parsed = datetime.datetime.strptime(time_str, "%I:%M %p")
+
+            current_time = datetime.datetime.now()
+            datetime_parsed = time_parsed.replace(
+                year=current_time.year,
+                month=current_time.month,
+                day=current_time.day
+            )
+            if datetime_parsed < current_time:
+                datetime_parsed = datetime_parsed + datetime.timedelta(days=1)
+
+            if indicator["chargingStatusType"] == "CHARGING":
+                charging_end_time = datetime_parsed
+                remaining_charging_time = (charging_end_time - current_time).seconds
+            elif indicator["chargingStatusType"] == "PLUGGED_IN":
+                charging_start_time = datetime_parsed
+        except ValueError:
+            _LOGGER.error(
+                "Error parsing charging end time '%s' out of '%s'",
+                time_str,
+                indicator["infoLabel"]
+            )
+
+        self.charging_end_time = charging_end_time
+        self.charging_start_time = charging_start_time
+        self.remaining_charging_time = remaining_charging_time
+
+    @staticmethod
+    def _parse_to_tuple(fuel_indicator):
+        """Parse fuel indicator to standard range tuple."""
+        try:
+            range_val = int(fuel_indicator["rangeValue"])
+        except ValueError:
+            return None
+        return (range_val, fuel_indicator["rangeUnits"])
 
 
 def backend_parameter(func):
@@ -96,7 +180,7 @@ def backend_parameter(func):
     """
     def _func_wrapper(self: 'VehicleStatus', *args, **kwargs):
         # pylint: disable=protected-access
-        if self._state.attributes[SERVICE_STATUS] is None:
+        if self.properties is None and self.status is None:
             raise ValueError('No data available for vehicle status!')
         try:
             return func(self, *args, **kwargs)
@@ -106,100 +190,164 @@ def backend_parameter(func):
     return _func_wrapper
 
 
-class VehicleStatus:  # pylint: disable=too-many-public-methods
+class VehicleStatus(SerializableBaseClass):  # pylint: disable=too-many-public-methods
     """Models the status of a vehicle."""
 
-    def __init__(self, state):
+    def __init__(self, account: "ConnectedDriveAccount", status_dict: Dict = None):
         """Constructor."""
-        self._state = state
+        self._account = account
+        self.status: Dict = {}
+        self.properties: Dict = {}
+        self._fuel_indicators: FuelIndicator = {}
+        self._remote_service_position: Dict = {}
 
-    @property
-    @backend_parameter
-    def attributes(self) -> dict:
-        """Retrieve all attributes from the sever.
+        if status_dict:
+            self.update_state(status_dict)
 
-        This does not parse the results in any way.
-        """
-        return self._state.attributes[SERVICE_STATUS]
+    def update_state(self, status_dict: Dict):
+        """Updates the vehicle status."""
+        self.status: Dict = status_dict["status"]
+        self.properties: Dict = status_dict["properties"]
+        self._fuel_indicators = FuelIndicator(status_dict["status"]["fuelIndicators"])
+
+    def set_remote_service_position(self, position_dict: Dict):
+        """Store remote service position returned from vehicle finder service."""
+        if position_dict.get('errorDetails'):
+            error = position_dict["errorDetails"]
+            _LOGGER.error("Error retrieving vehicle position. %s: %s", error["title"], error["description"])
+            return None
+        pos = position_dict["positionData"]["position"]
+        pos["timestamp"] = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+
+        self._remote_service_position = pos
+        return None
 
     @property
     @backend_parameter
     def timestamp(self) -> datetime.datetime:
         """Get the timestamp when the data was recorded."""
-        return self._parse_datetime(self._state.attributes[SERVICE_STATUS]['updateTime'])
+        return max(
+            parse_datetime(self.properties['lastUpdatedAt']),
+            parse_datetime(self.status['lastUpdatedAt'])
+        )
 
     @property
     @backend_parameter
-    def gps_position(self) -> (float, float):
+    def gps_position(self) -> Tuple[float, float]:
         """Get the last known position of the vehicle.
 
         Returns a tuple of (latitude, longitude).
         This only provides data, if the vehicle tracking is enabled!
         """
-        if not self.is_vehicle_tracking_enabled:
-            _LOGGER.warning('Vehicle tracking is disabled')
-            return None
-        pos = self._state.attributes[SERVICE_STATUS]['position']
-        return float(pos['lat']), float(pos['lon'])
+        if self.is_vehicle_active:
+            _LOGGER.info('Vehicle was moving at last update, no position available')
+            return (None, None)
+        if not self._remote_service_position and "vehicleLocation" not in self.properties:
+            _LOGGER.info("No vehicle location data available.")
+            return (None, None)
+
+        t_remote = self._remote_service_position.get(
+            "timestamp",
+            datetime.datetime(1900, 1, 1, tzinfo=datetime.timezone.utc)
+        )
+        if t_remote > self.timestamp:
+            pos = self._remote_service_position
+        else:
+            pos = self.properties['vehicleLocation']["coordinates"]
+
+        # Convert GCJ02 to WGS84 for positions in China
+        if self._account.region == Regions.CHINA:
+            pos = pos.copy()
+            pos['longitude'], pos['latitude'] = gcj2wgs(gcjLon=pos['longitude'], gcjLat=pos['latitude'])
+
+        return float(pos['latitude']), float(pos['longitude'])
 
     @property
     @backend_parameter
-    def gps_heading(self) -> (int):
+    def gps_heading(self) -> int:
         """Get the last known heading of the vehicle.
 
         This only provides data, if the vehicle tracking is enabled!
         """
-        if not self.is_vehicle_tracking_enabled:
-            _LOGGER.warning('Vehicle tracking is disabled')
+        if self.is_vehicle_active:
+            _LOGGER.info('Vehicle was moving at last update, no position available')
             return None
-        pos = self._state.attributes[SERVICE_STATUS]['position']
+
+        if not self._remote_service_position and "vehicleLocation" not in self.properties:
+            _LOGGER.info("No vehicle location data available.")
+            return None
+
+        t_remote = self._remote_service_position.get(
+            "timestamp",
+            datetime.datetime(1900, 1, 1, tzinfo=datetime.timezone.utc)
+        )
+        if t_remote > self.timestamp:
+            pos = self._remote_service_position
+        else:
+            pos = self.properties['vehicleLocation']
+
         return int(pos['heading'])
 
     @property
     @backend_parameter
-    def is_vehicle_tracking_enabled(self) -> bool:
-        """Check if the position tracking of the vehicle is enabled.
+    def is_vehicle_active(self) -> bool:
+        """Check if the vehicle is active/moving.
 
-        The server return "OK" if tracking is enabled and "DRIVER_DISABLED" if it is disabled in the vehicle.
+        If the vehicle was active/moving at the time of the last status update, current position is not available.
         """
-        return self._state.attributes[SERVICE_STATUS]['position']['status'] not in ['DRIVER_DISABLED', 'TOO_FAR_AWAY']
+        return self.properties['inMotion']
 
     @property
     @backend_parameter
-    def mileage(self) -> int:
+    def mileage(self) -> Tuple[int, str]:
         """Get the mileage of the vehicle.
 
         Returns a tuple of (value, unit_of_measurement)
         """
-        return int(self._state.attributes[SERVICE_STATUS]['mileage'])
+        return (
+            self.status['currentMileage']['mileage'],
+            self.status['currentMileage']['units']
+        )
 
     @property
     @backend_parameter
-    def remaining_range_fuel(self) -> int:
+    def remaining_range_fuel(self) -> Tuple[int, str]:
         """Get the remaining range of the vehicle on fuel.
 
         Returns a tuple of (value, unit_of_measurement)
         """
-        return int(self._state.attributes[SERVICE_STATUS]['remainingRangeFuel'])
+        return self._fuel_indicators.remaining_range_fuel or (None, None)
 
     @property
     @backend_parameter
-    def remaining_fuel(self) -> int:
+    def remaining_fuel(self) -> Tuple[int, str]:
         """Get the remaining fuel of the vehicle.
 
         Returns a tuple of (value, unit_of_measurement)
         """
-        return int(self._state.attributes[SERVICE_STATUS]['remainingFuel'])
+        return (
+            self.properties['fuelLevel']['value'],
+            self.properties['fuelLevel']['units'],
+        )
+
+    @property
+    @backend_parameter
+    def fuel_indicator_count(self) -> int:
+        """Gets the number of fuel indicators.
+
+        Can be used to identify REX vehicles if driveTrain == ELECTRIC.
+        """
+        return len(self.status["fuelIndicators"])
 
     @property
     @backend_parameter
     def lids(self) -> List['Lid']:
         """Get all lids (doors+hatch+trunk) of the car."""
         result = []
-        for lid in LIDS:
-            if lid in self._state.attributes[SERVICE_STATUS] and \
-                    self._state.attributes[SERVICE_STATUS][lid] != LidState.INVALID.value:
-                result.append(Lid(self, lid))
+        lids = self.properties["doorsAndWindows"]
+        result.extend([Lid(k, v) for k, v in lids.items() if k in ["hood", "trunk"] and v != LidState.INVALID.value])
+        result.extend([Lid(k, v) for k, v in lids["doors"].items() if v != LidState.INVALID.value])
+
         return result
 
     @property
@@ -216,11 +364,13 @@ class VehicleStatus:  # pylint: disable=too-many-public-methods
     @backend_parameter
     def windows(self) -> List['Window']:
         """Get all windows (doors+sun roof) of the car."""
-        result = []
-        for window in WINDOWS:
-            if window in self._state.attributes[SERVICE_STATUS] and \
-                    self._state.attributes[SERVICE_STATUS][window] != LidState.INVALID.value:
-                result.append(Window(self, window))
+        result = [
+            Window(k, v)
+            for k, v in self.properties["doorsAndWindows"].get("windows").items()
+            if v != LidState.INVALID.value
+        ]
+        if "moonroof" in self.properties["doorsAndWindows"]:
+            result.append(Window("moonroof", self.properties["doorsAndWindows"]["moonroof"]))
         return result
 
     @property
@@ -231,37 +381,43 @@ class VehicleStatus:  # pylint: disable=too-many-public-methods
     @property
     def all_windows_closed(self) -> bool:
         """Check if all windows are closed."""
-        return len(list(self.open_windows)) == 0
+        return len(self.open_windows) == 0
 
     @property
     @backend_parameter
     def door_lock_state(self) -> LockState:
         """Get state of the door locks."""
-        return LockState(self._state.attributes[SERVICE_STATUS]['doorLockState'])
+        return LockState(self.status['doorsGeneralState'].upper())
 
     @property
     @backend_parameter
     def last_update_reason(self) -> str:
         """The reason for the last state update"""
-        return self._state.attributes[SERVICE_STATUS]['updateReason']
+        return self.status['timestampMessage']
 
     @property
     @backend_parameter
     def last_charging_end_result(self) -> str:
         """Get the last charging end result"""
-        return self._state.attributes[SERVICE_STATUS]['lastChargingEndResult']
+        return None  # Not available in My BMW
 
     @property
     @backend_parameter
     def connection_status(self) -> str:
         """Get status of the connection"""
-        return self._state.attributes[SERVICE_STATUS]['connectionStatus']
+        if "chargingState" not in self.properties:
+            return None
+        return (
+            "CONNECTED"
+            if self.properties["chargingState"]["isChargerConnected"]
+            else "DISCONNECTED"
+        )
 
     @property
     @backend_parameter
     def condition_based_services(self) -> List['ConditionBasedServiceReport']:
         """Get status of the condition based services."""
-        return [ConditionBasedServiceReport(s) for s in self._state.attributes[SERVICE_STATUS]['cbsData']]
+        return [ConditionBasedServiceReport(s) for s in self.properties['serviceRequired']]
 
     @property
     def are_all_cbs_ok(self) -> bool:
@@ -273,12 +429,17 @@ class VehicleStatus:  # pylint: disable=too-many-public-methods
 
     @property
     @backend_parameter
-    def parking_lights(self) -> ParkingLightState:
+    def parking_lights(self) -> None:
         """Get status of parking lights.
 
         :returns None if status is unknown.
         """
-        return ParkingLightState(self._state.attributes[SERVICE_STATUS]['parkingLight'])
+        return None  # Not available in My BMW
+
+    @property
+    def has_parking_light_state(self) -> bool:
+        """Return True if parking light is available."""
+        return False  # Not available in My BMW
 
     @property
     def are_parking_lights_on(self) -> bool:
@@ -286,81 +447,83 @@ class VehicleStatus:  # pylint: disable=too-many-public-methods
 
         :returns None if status is unknown.
         """
-        lights = self.parking_lights
-        if lights is None:
-            return None
-        return lights != ParkingLightState.OFF
-
-    @staticmethod
-    def _parse_datetime(date_str: str) -> datetime.datetime:
-        """Convert a time string into datetime."""
-        date_format = "%Y-%m-%dT%H:%M:%S%z"
-        return datetime.datetime.strptime(date_str, date_format)
-
-    def __getattr__(self, item):
-        """Generic get function for all backend attributes."""
-        return self._state.attributes[SERVICE_STATUS][item]
+        return None  # Not available in My BMW
 
     @property
     @backend_parameter
-    def remaining_range_electric(self) -> int:
+    def remaining_range_electric(self) -> Tuple[int, str]:
         """Remaining range on battery, in kilometers."""
-        return int(self._state.attributes[SERVICE_STATUS]['remainingRangeElectric'])
+        return self._fuel_indicators.remaining_range_electric or (None, None)
 
     @property
     @backend_parameter
-    def remaining_range_total(self) -> int:
+    def remaining_range_total(self) -> Tuple[int, str]:
         """Get the total remaining range of the vehicle in kilometers.
 
         That is electrical range + fuel range.
         """
-        result = 0
-        if self.remaining_range_electric is not None:
-            result += self.remaining_range_electric
-        if self.remaining_range_fuel is not None:
-            result += self.remaining_range_fuel
-        return result
+        return self._fuel_indicators.remaining_range_combined or (None, None)
 
     @property
     @backend_parameter
     def max_range_electric(self) -> int:
         """ This can change with driving style and temperature in kilometers."""
-        return int(self._state.attributes[SERVICE_STATUS]['maxRangeElectric'])
+        return None  # Not available in My BMW
 
     @property
     @backend_parameter
     def charging_status(self) -> ChargingState:
         """Charging state of the vehicle."""
-        state = self._state.attributes[SERVICE_STATUS]['chargingStatus']
-        return ChargingState(state)
+        if "chargingState" not in self.properties:
+            return None
+        return ChargingState(self._fuel_indicators.charging_status)
 
     @property
     @backend_parameter
-    def charging_time_remaining(self) -> datetime.timedelta:
-        """Get the remaining charging time."""
-        minutes = self._state.attributes[SERVICE_STATUS]['chargingTimeRemaining']
-        return datetime.timedelta(minutes=minutes)
+    def charging_time_remaining(self) -> float:
+        """Get the remaining charging duration."""
+        return round((self._fuel_indicators.remaining_charging_time or 0) / 60.0 / 60.0, 2)
+
+    @property
+    @backend_parameter
+    def charging_start_time(self) -> datetime.datetime:
+        """Get the charging finish time."""
+        if self._fuel_indicators.charging_start_time:
+            return self._fuel_indicators.charging_start_time.replace(tzinfo=self._account.timezone())
+        return None
+
+    @property
+    @backend_parameter
+    def charging_end_time(self) -> datetime.datetime:
+        """Get the charging finish time."""
+        if self._fuel_indicators.charging_end_time:
+            return self._fuel_indicators.charging_end_time.replace(tzinfo=self._account.timezone())
+        return None
+
+    @property
+    @backend_parameter
+    def charging_time_label(self) -> datetime.datetime:
+        """Get the remaining charging time as provided by the API."""
+        return self._fuel_indicators.charging_time_label
 
     @property
     @backend_parameter
     def charging_level_hv(self) -> int:
         """State of charge of the high voltage battery in percent."""
-        return int(self._state.attributes[SERVICE_STATUS]['chargingLevelHv'])
+        return int(self.properties["electricRangeAndStatus"]["chargePercentage"])
 
     @property
     @backend_parameter
     def fuel_percent(self) -> int:
         """State of fuel in percent."""
-        return int(self._state.attributes[SERVICE_STATUS]['fuelPercent'])
+        return int(self.properties['fuelPercentage']["value"])
 
     @property
     @backend_parameter
     def check_control_messages(self) -> List[CheckControlMessage]:
         """List of check control messages."""
-        # TO DO change this in HA binary_sensor.py first
-        # messages = self._state.attributes[SERVICE_STATUS]['STATUS'].get('checkControlMessages', [])
-        # return [CheckControlMessage(m) for m in messages]
-        return self._state.attributes[SERVICE_STATUS].get('checkControlMessages', [])
+        messages = self.status.get('checkControlMessages', [])
+        return [CheckControlMessage(m) for m in messages if m["state"] != "OK"]
 
     @property
     @backend_parameter
@@ -375,26 +538,18 @@ class Lid:  # pylint: disable=too-few-public-methods
     Lids are: Doors + Trunk + Hatch
     """
 
-    def __init__(self, vehicle_status: VehicleStatus, name: str):
+    def __init__(self, name: str, state: str):
         #: name of the lid
         self.name = name
-        self._vehicle_status = vehicle_status
-
-    @property
-    def state(self):
-        """Get the current state of the lid."""
-        return LidState(getattr(self._vehicle_status, self.name))
+        self.state = LidState(state)
 
     @property
     def is_closed(self) -> bool:
         """Check if the lid is closed."""
         return self.state == LidState.CLOSED
 
-    def __str__(self) -> str:
-        return '{}: {}'.format(self.name, self._vehicle_status)
 
-
-class Window(Lid):  # pylint: disable=too-few-public-methods
+class Window(Lid):  # pylint: disable=too-few-public-methods,no-member
     """A window of the vehicle.
 
     A window can be a normal window of the car or the sun roof.
@@ -404,38 +559,21 @@ class Window(Lid):  # pylint: disable=too-few-public-methods
 class ConditionBasedServiceReport:  # pylint: disable=too-few-public-methods
     """Entry in the list of condition based services."""
 
-    def __init__(self, data: dict):
+    def __init__(self, cbs_data: dict):
 
         #: date when the service is due
-        self.due_date = self._parse_date(data.get('cbsDueDate'))
+        self.due_date = parse_datetime(cbs_data.get('dateTime'))
 
         #: status of the service
-        self.state = ConditionBasedServiceStatus(data['cbsState'])
+        self.state = ConditionBasedServiceStatus(cbs_data['status'])
 
         #: service type
-        self.service_type = data['cbsType']
+        self.service_type = cbs_data['type']
 
         #: distance when the service is due
         self.due_distance = None
-        if 'cbsRemainingMileage' in data:
-            self.due_distance = int(data['cbsRemainingMileage'])
+        if 'distance' in cbs_data:
+            self.due_distance = (cbs_data["distance"]['value'], cbs_data["distance"]['units'])
 
         #: description of the required service
-        self.description = data['cbsDescription']
-
-    @staticmethod
-    def _parse_date(datestr: str) -> datetime.datetime:
-        if datestr is None:
-            return None
-        formats = [
-            '%Y-%m',
-            '%m.%Y',
-        ]
-        for date_format in formats:
-            try:
-                date = datetime.datetime.strptime(datestr, date_format)
-                return date.replace(day=1)
-            except ValueError:
-                pass
-        _LOGGER.error('Unknown time format for CBS: %s', datestr)
-        return None
+        self.description = None  # Could be retrieved from status.requiredServices if needed
