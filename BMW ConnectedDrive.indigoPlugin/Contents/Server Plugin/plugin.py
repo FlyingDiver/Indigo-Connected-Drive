@@ -1,292 +1,289 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import indigo
 import json
 import logging
 import requests
 import time
+import asyncio
 
-from subprocess import Popen, PIPE
-from threading import Thread
+from aiohttp import ClientSession
+from bimmer_connected.account import ConnectedDriveAccount
+from bimmer_connected.country_selector import get_region_from_name, valid_regions
+from bimmer_connected.vehicle import VehicleViewDirection
 
 
-def liters2gallons(l):
-    return float(l) / 3.785411784
+def liters2gallons(liters):
+    return float(liters) / 3.785411784
+
 
 def km2miles(km):
     return float(km) * 0.62137
-    
+
+
 def no_convert(x):
     return x
- 
+
+
 def dict_to_states(prefix, the_dict, states_list, skips=None):
-     for key in the_dict:
+    for key in the_dict:
         if skips and key in skips:
             continue
         if isinstance(the_dict[key], list):
-            list_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list, skips)
+            list_to_states(f"{prefix}{key}_", the_dict[key], states_list, skips)
         elif isinstance(the_dict[key], dict):
-            dict_to_states(u"{}{}_".format(prefix, key), the_dict[key], states_list, skips)
+            dict_to_states(f"{prefix}{key}_", the_dict[key], states_list, skips)
         elif the_dict[key]:
             states_list.append({'key': unicode(prefix + key.strip()), 'value': the_dict[key]})
-        
-   
+
+
 def list_to_states(prefix, the_list, states_list, skips=None):
-     for i in range(len(the_list)):
+    for i in range(len(the_list)):
         if isinstance(the_list[i], list):
-            list_to_states(u"{}{}_".format(prefix, i), the_list[i], states_list, skips)
+            list_to_states(f"{prefix}{i}_", the_list[i], states_list, skips)
         elif isinstance(the_list[i], dict):
-            dict_to_states(u"{}{}_".format(prefix, i), the_list[i], states_list, skips)
+            dict_to_states(f"{prefix}{i}_", the_list[i], states_list, skips)
         else:
             states_list.append({'key': unicode(prefix + unicode(i)), 'value': the_list[i]})
-   
+
 
 status_format = {
     "us": {
-        "chargingLevelHv":          (u"{}%", no_convert),
-        "doorLockState":            (u"{}", no_convert),
-        "fuelPercent":              (u"{}%", no_convert),
-        "mileage":                  (u"{:.0f} miles", km2miles),
-        "remainingFuel":            (u"{:.1f} gal", liters2gallons),
-        "remainingRangeFuelMls":    (u"{:.0f} mi", no_convert),
+        "chargingLevelHv": (u"{}%", no_convert),
+        "doorLockState": (u"{}", no_convert),
+        "fuelPercent": (u"{}%", no_convert),
+        "mileage": (u"{:.0f} miles", km2miles),
+        "remainingFuel": (u"{:.1f} gal", liters2gallons),
+        "remainingRangeFuelMls": (u"{:.0f} mi", no_convert),
     },
     "metric": {
-        "chargingLevelHv":      (u"{}%", no_convert),
-        "doorLockState":        (u"{}", no_convert),
-        "fuelPercent":          (u"{}%", no_convert),
-        "mileage":              (u"{} km", no_convert),
-        "remainingFuel":        (u"{} ltrs", no_convert),
-        "remainingRangeFuel":   (u"{} km", no_convert),
+        "chargingLevelHv": (u"{}%", no_convert),
+        "doorLockState": (u"{}", no_convert),
+        "fuelPercent": (u"{}%", no_convert),
+        "mileage": (u"{} km", no_convert),
+        "remainingFuel": (u"{} ltrs", no_convert),
+        "remainingRangeFuel": (u"{} km", no_convert),
     }
 }
-        
-   
+
+
+async def get_status(username, password, region):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account.update_vehicle_states()
+    return account.vehicles
+
+
+def light_flash(username, password, region, vin):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    if not vehicle:
+        return None
+    status = vehicle.remote_services.trigger_remote_light_flash()
+    return status.state
+
+
+def door_lock(username, password, region, vin):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    if not vehicle:
+        return None
+    status = vehicle.remote_services.trigger_remote_door_lock()
+    return status.state
+
+
+def door_unlock(username, password, region, vin):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    if not vehicle:
+        return None
+    status = vehicle.remote_services.trigger_remote_door_unlock()
+    return status.state
+
+
+def horn(username, password, region, vin):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    if not vehicle:
+        return None
+    status = vehicle.remote_services.trigger_remote_horn()
+    return status.state
+
+
+def air_conditioning(username, password, region, vin):
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    if not vehicle:
+        return None
+    status = vehicle.remote_services.trigger_remote_air_conditioning()
+    return status.state
+
+
+def send_message(username, password, region, vin, subject, text):
+    """Send a message to car."""
+    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    vehicle = account.get_vehicle(vin)
+    msg_data = dict(
+        text=text,
+        subject=subject
+    )
+    vehicle.remote_services.trigger_send_message(msg_data)
+
+
 class Plugin(indigo.PluginBase):
 
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
+        self.pluginPrefs = pluginPrefs
+
         pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t[%(levelname)8s] %(name)20s.%(funcName)-25s%(msg)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.plugin_file_handler.setFormatter(pfmt)
-
-        try:
-            self.logLevel = int(self.pluginPrefs[u"logLevel"])
-        except:
-            self.logLevel = logging.INFO
+        self.logLevel = int(self.pluginPrefs.get("logLevel", logging.INFO))
         self.indigo_log_handler.setLevel(self.logLevel)
-        self.logger.debug(u"logLevel = {}".format(self.logLevel))
-        self.bridge_data ={}
-        
-    def startup(self):
-        self.logger.info(u"Starting Connected Drive")
-                
-        self.updateFrequency = float(self.pluginPrefs.get('updateFrequency', "30")) *  60.0
-        self.logger.debug(u"updateFrequency = {}".format(self.updateFrequency))
+        self.logger.debug(f"logLevel = {self.logLevel}")
+
+        self.updateFrequency = float(self.pluginPrefs.get('updateFrequency', "30")) * 60.0
+        self.logger.debug(f"updateFrequency = {self.updateFrequency}")
         self.next_update = time.time()
         self.update_needed = False
 
+        self.bridge_data = {}
         self.wrappers = {}
         self.read_threads = {}
-        
+
         self.cd_accounts = {}
         self.cd_vehicles = {}
         self.vehicle_data = {}
         self.vehicle_states = {}
 
+    def startup(self):
+        self.logger.info("Starting Connected Drive")
+
     def shutdown(self):
-        self.logger.info(u"Stopping Connected Drive")
-        
-    def validatePrefsConfigUi(self, valuesDict):
-        self.logger.debug(u"validatePrefsConfigUi called")
+        self.logger.info("Stopping Connected Drive")
+
+    @staticmethod
+    def validatePrefsConfigUi(valuesDict):
         errorDict = indigo.Dict()
-
-        updateFrequency = int(valuesDict['updateFrequency'])
+        updateFrequency = int(valuesDict.get('updateFrequency', 15))
         if (updateFrequency < 5) or (updateFrequency > 60):
-            errorDict['updateFrequency'] = u"Update frequency is invalid - enter a valid number (between 5 and 60)"
-
+            errorDict['updateFrequency'] = "Update frequency is invalid - enter a valid number (between 5 and 60)"
         if len(errorDict) > 0:
-            return (False, valuesDict, errorDict)
-
+            return False, valuesDict, errorDict
         return True
-        
+
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
         if not userCancelled:
-            try:
-                self.logLevel = int(valuesDict[u"logLevel"])
-            except:
-                self.logLevel = logging.INFO
+            self.logLevel = int(valuesDict.get("logLevel", logging.INFO))
             self.indigo_log_handler.setLevel(self.logLevel)
-
             self.updateFrequency = float(valuesDict['updateFrequency']) * 60.0
             self.next_update = time.time()
-
-            self.logger.debug(u"closedPrefsConfigUi, logLevel = {}, updateFrequency = {}".format(self.logLevel, self.updateFrequency))        
+            self.logger.debug(f"closedPrefsConfigUi, logLevel = {self.logLevel}, updateFrequency = {self.updateFrequency}")
 
     ########################################
-        
+
     def runConcurrentThread(self):
-        self.logger.debug(u"runConcurrentThread starting")
         try:
             while True:
-                
                 if (time.time() > self.next_update) or self.update_needed:
                     self.next_update = time.time() + self.updateFrequency
                     self.update_needed = False
-                    
-                    # request update from each CD account
-                    cmd = {'cmd': 'vehicles'} 
+
+                    cmd = {'cmd': 'vehicles'}
                     for devID in self.wrappers:
                         self.wrapper_write(indigo.devices[devID].id, cmd)
-
                 self.sleep(1.0)
-
         except self.StopThread:
-            self.logger.debug(u"runConcurrentThread ending")
             pass
-                
-################################################################################
 
-    def wrapper_write(self, deviceID, msg):
-        jsonMsg = json.dumps(msg)
-        self.logger.threaddebug(u"Send wrapper message: {}".format(jsonMsg))
-        self.wrappers[deviceID].stdin.write(u"{}\n".format(jsonMsg))
-
-
-    def wrapper_read(self, acctDevID):
-        wrapper = self.wrappers[acctDevID]
-        while True:
-            msg = wrapper.stdout.readline()
-            acctDevice = indigo.devices[acctDevID]
-            data = json.loads(msg)
-            self.logger.threaddebug(u"{}: Received wrapper message:\n{}".format(acctDevice.name, json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))))
-
-            if data['msg'] == 'echo':
-                pass    
-                
-            elif data['msg'] == 'status':
-                self.logger.debug("{}: {}".format(acctDevice.name, data['status']))
-                acctDevice.updateStateOnServer(key="status", value=data['status'])
-                
-            elif data['msg'] == 'error':
-                self.logger.error("{}: {}".format(acctDevice.name, data['error']))
-                acctDevice.updateStateOnServer(key="status", value="Error")
-
-            elif data['msg'] == 'vehicle':
-                self.logger.debug("{}: Vehicle data message for: {}".format(acctDevice.name, data['vin']))
-
-                # save the data
-                self.vehicle_data[data['vin']] = {'account': acctDevID, 'properties': data['properties'], 'status': data['status']}
-                
-                # If there's an Indigo device for this vehicle, update it
-                
-                vehicleDevID = self.cd_vehicles.get(data['vin'], None)
-                if not vehicleDevID:
-                    continue       
-                vehicleDevice = indigo.devices.get(int(vehicleDevID), None)
-                if not vehicleDevice:
-                    continue
-                    
-                states_list = []                
-                if data['status']:       
-                    units = self.pluginPrefs.get('units', "us")
-                    state_key = vehicleDevice.pluginProps["state_key"]
-                    status_value = data['status'][state_key]
-                    ui_format, converter = status_format[units][state_key]
-                    states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
-
-                    try:   
-                        dict_to_states(u"", data['status'], states_list, skips=['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData'])   
-                    except:
-                        self.logger.debug("{}: Error converting status to states for {}".format(acctDevice.name, data['vin']))
-                        pass
-                    
-                self.vehicle_states[vehicleDevice.id] = states_list
-
-                try:     
-                    vehicleDevice.stateListOrDisplayStateIdChanged()
-                    vehicleDevice.updateStatesOnServer(states_list)
-                except TypeError as err:
-                    self.logger.error(u"{}: invalid state type in states_list: {}".format(vehicleDevice.name, states_list))   
-        
-
-           
-            else:
-                self.logger.error("{}: Unknown Message type '{}'".format(acctDevice.name, data['msg']))
-               
-
-    ########################################
-
-    def getDeviceConfigUiValues(self, pluginProps, typeId, devId):
-        self.logger.debug(u"getDeviceConfigUiValues, typeId = {}, devId = {}, pluginProps = {}".format(typeId, devId, pluginProps))
-        valuesDict = pluginProps
-        errorMsgDict = indigo.Dict()
-
-        return (valuesDict, errorMsgDict)
-             
+    ################################################################################
 
     def deviceStartComm(self, device):
-        self.logger.info(u"{}: Starting {} Device".format(device.name, device.deviceTypeId))
+        self.logger.info(f"{device.name}: Starting {device.deviceTypeId} Device")
 
         if device.deviceTypeId == "cdAccount":
-            self.cd_accounts[device.id] = device.name        
-            
-            try:
-                # Start up the wrapper task   
-                argList = [self.pluginPrefs.get("py3path", "/usr/bin/python3"), './wrapper.py', device.pluginProps['username'], device.pluginProps['password'], device.pluginProps['region']] 
-                self.logger.debug(u"{}: deviceStartComm, argList = {}".format(device.name, argList))
-                self.wrappers[device.id] = Popen(argList, stdin=PIPE, stdout=PIPE, close_fds=True, bufsize=1, universal_newlines=True)
-            except:
-                raise
+            self.cd_accounts[device.id] = device.name
 
-            self.read_threads[device.id] = Thread(target=self.wrapper_read, args=(device.id,))            
-            self.read_threads[device.id].daemon = True
-            self.read_threads[device.id].start()
-                                
         elif device.deviceTypeId == "cdVehicle":
             self.cd_vehicles[device.address] = device.id
             self.update_needed = True
-            
+
         else:
-            self.logger.error(u"{}: deviceStartComm: Unknown device type: {}".format(device.name, device.deviceTypeId))
+            self.logger.error(f"{device.name}: deviceStartComm: Unknown device type: {device.deviceTypeId}")
 
         device.stateListOrDisplayStateIdChanged()
-            
+
     def deviceStopComm(self, device):
-        self.logger.info(u"{}: Stopping {} Device {}".format( device.name, device.deviceTypeId, device.id))
+        self.logger.info(f"{device.name}: Stopping {device.deviceTypeId} Device {device.id}")
 
-        if device.deviceTypeId == "cdAccount":
-            self.wrappers[device.id].terminate()
+    def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
+        self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']}")
+        accountID = self.vehicle_data[vehicleDevice.address]['account']
+        cmd = {'cmd': pluginAction.props["serviceCode"]}
+        self.wrapper_write(accountID, cmd)
 
-    
-    ########################################
-    #
+        self.logger.threaddebug(f"{acctDevice.name}: Received wrapper message:\n{json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))}")
+
+        self.logger.debug("{}: Vehicle data message for: {}".format(acctDevice.name, data['vin']))
+
+        # save the data
+        self.vehicle_data[data['vin']] = {'account': acctDevID, 'properties': data['properties'], 'status': data['status']}
+
+        # If there's an Indigo device for this vehicle, update it
+
+        vehicleDevID = self.cd_vehicles.get(data['vin'], None)
+        if not vehicleDevID:
+            return
+        vehicleDevice = indigo.devices.get(int(vehicleDevID), None)
+        if not vehicleDevice:
+            return
+
+        states_list = []
+        if data['status']:
+            units = self.pluginPrefs.get('units', "us")
+            state_key = vehicleDevice.pluginProps["state_key"]
+            status_value = data['status'][state_key]
+            ui_format, converter = status_format[units][state_key]
+            states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
+
+            try:
+                dict_to_states(u"", data['status'], states_list, skips=['DCS_CCH_Activation', 'DCS_CCH_Ongoing', 'cbsData'])
+            except (Exception,):
+                self.logger.debug(f"{acctDevice.name}: Error converting status to states for {data['vin']}")
+                pass
+
+        self.vehicle_states[vehicleDevice.id] = states_list
+
+        try:
+            vehicleDevice.stateListOrDisplayStateIdChanged()
+            vehicleDevice.updateStatesOnServer(states_list)
+        except TypeError as err:
+            self.logger.error(f"{vehicleDevice.name}: invalid state type in states_list: {states_list}")
+
+    #######################################
     # callback for state list changes, called from stateListOrDisplayStateIdChanged()
-    #
-    ########################################
+    #######################################
     def getDeviceStateList(self, device):
         state_list = indigo.PluginBase.getDeviceStateList(self, device)
 
         if device.id in self.vehicle_states and self.vehicle_states[device.id]:
-            
             for item in self.vehicle_states[device.id]:
                 key = item['key']
                 value = item['value']
                 if isinstance(value, bool):
                     dynamic_state = self.getDeviceStateDictForBoolTrueFalseType(unicode(key), unicode(key), unicode(key))
-                    self.logger.threaddebug(u"{}: getDeviceStateList, adding Bool state {}, value {}".format(device.name, key, value))
+                    self.logger.threaddebug(f"{device.name}: getDeviceStateList, adding Bool state {key}, value {value}")
                 elif isinstance(value, (float, int)):
                     dynamic_state = self.getDeviceStateDictForNumberType(unicode(key), unicode(key), unicode(key))
-                    self.logger.threaddebug(u"{}: getDeviceStateList, adding Number state {}, value {}".format(device.name, key, value))
+                    self.logger.threaddebug(f"{device.name}: getDeviceStateList, adding Number state {key}, value {value}")
                 elif isinstance(value, (str, unicode)):
                     dynamic_state = self.getDeviceStateDictForStringType(unicode(key), unicode(key), unicode(key))
-                    self.logger.threaddebug(u"{}: getDeviceStateList, adding String state {}, value {}".format(device.name, key, value))
+                    self.logger.threaddebug(f"{device.name}: getDeviceStateList, adding String state {key}, value {value}")
                 else:
-                    self.logger.debug(u"{}: getDeviceStateList, unknown type for key = {}, value {}".format(device.name, key, value))
+                    self.logger.debug(f"{device.name}: getDeviceStateList, unknown type for key = {key}, value {value}")
                     continue
-                    
                 state_list.append(dynamic_state)
-
         return state_list
-
 
     ########################################
     #
@@ -295,43 +292,35 @@ class Plugin(indigo.PluginBase):
     ########################################
 
     def get_vehicle_list(self, filter="", valuesDict=None, typeId="", targetId=0):
-        self.logger.threaddebug("get_vehicle_list: typeId = {}, targetId = {}, valuesDict = {}".format(typeId, targetId, valuesDict))
+        self.logger.threaddebug(f"get_vehicle_list: typeId = {typeId}, targetId = {targetId}, valuesDict = {valuesDict}")
         retList = []
-            
+
         for v in self.vehicle_data.values():
-            retList.append((v['properties']['vin'], "{} {}".format(v['properties']['yearOfConstruction'], v['properties']['model'])))
-        retList.sort(key=lambda tup: tup[1])            
+            retList.append((v['properties']['vin'], f"{v['properties']['yearOfConstruction']} {v['properties']['model']}"))
+        retList.sort(key=lambda tup: tup[1])
         return retList
 
     def get_vehicle_state_list(self, filter="", valuesDict=None, typeId="", targetId=0):
-        self.logger.threaddebug("get_vehicle_state_list: typeId = {}, targetId = {}, valuesDict = {}".format(typeId, targetId, valuesDict))
+        self.logger.threaddebug(f"get_vehicle_state_list: typeId = {typeId}, targetId = {targetId}, valuesDict = {valuesDict}")
         retList = []
-            
+
         vin = valuesDict.get('address', None)
         if not vin:
             return retList
-            
+
         vehicle_status = self.vehicle_data[vin]['status']
         for s in ['chargingLevelHv', 'fuelPercent', 'mileage', 'remainingFuel', 'remainingRangeFuel', 'doorLockState']:
             if s in vehicle_status:
                 retList.append((s, s))
-        retList.sort(key=lambda tup: tup[1])            
+        retList.sort(key=lambda tup: tup[1])
         return retList
 
     # doesn't do anything, just needed to force other menus to dynamically refresh
-    def menuChanged(self, valuesDict = None, typeId = None, devId = None):
+    @staticmethod
+    def menuChanged(valuesDict=None, typeId=None, devId=None):
         return valuesDict
-    
+
     def menuDumpVehicles(self):
         for vin in self.vehicle_data:
-            self.logger.info(u"Data for VIN {}:\n{}".format(vin, json.dumps(self.vehicle_data[vin], sort_keys=True, indent=4, separators=(',', ': '))))
+            self.logger.info(f"Data for VIN {vin}:\n{json.dumps(self.vehicle_data[vin], sort_keys=True, indent=4, separators=(',', ': '))}")
         return True
-
-
-    def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
-        self.logger.debug(u"{}: sendCommandAction {}".format(vehicleDevice.name, pluginAction.props["serviceCode"]))
-        accountID = self.vehicle_data[vehicleDevice.address]['account']
-        cmd = {'cmd': pluginAction.props["serviceCode"]} 
-        self.wrapper_write(accountID, cmd)
-
-

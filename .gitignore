@@ -137,3 +137,7 @@ dmypy.json
 bimmer_connected-dev/
 
 BMW ConnectedDrive.bbprojectd/
+
+BMW ConnectedDrive.indigoPlugin/.idea/
+
+bimmer_connected-0.8.10/
