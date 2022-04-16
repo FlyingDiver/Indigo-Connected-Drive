@@ -6,12 +6,9 @@ import json
 import logging
 import requests
 import time
-import asyncio
 
+import asyncio
 from aiohttp import ClientSession
-from bimmer_connected.account import ConnectedDriveAccount
-from bimmer_connected.country_selector import get_region_from_name, valid_regions
-from bimmer_connected.vehicle import VehicleViewDirection
 
 
 def liters2gallons(liters):
@@ -155,6 +152,13 @@ class Plugin(indigo.PluginBase):
         self.cd_vehicles = {}
         self.vehicle_data = {}
         self.vehicle_states = {}
+
+        try:
+            from bimmer_connected.account import ConnectedDriveAccount
+            from bimmer_connected.country_selector import get_region_from_name, valid_regions
+            from bimmer_connected.vehicle import VehicleViewDirection
+        except ImportError:
+            raise ImportError("'bimmer_connected' library missing.  Run 'pip3 install bimmer_connected' in Terminal window")
 
     def startup(self):
         self.logger.info("Starting Connected Drive")
