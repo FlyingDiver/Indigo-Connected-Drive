@@ -9,7 +9,7 @@
 	<key>IwsApiVersion</key>
 	<string>1.0.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>BMW Connected Drive</string>
+	<string>Connected Drive</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.flyingdiver.indigoplugin.bmw-cd</string>
 	<key>CFBundleVersion</key>
