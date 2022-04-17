@@ -10,6 +10,13 @@ import time
 import asyncio
 from aiohttp import ClientSession
 
+try:
+    from bimmer_connected.account import ConnectedDriveAccount
+    from bimmer_connected.country_selector import get_region_from_name, valid_regions
+    from bimmer_connected.vehicle import VehicleViewDirection
+except ImportError:
+    raise ImportError("'bimmer_connected' library missing.  Run 'pip3 install bimmer_connected' in Terminal window")
+
 
 def liters2gallons(liters):
     return float(liters) / 3.785411784
@@ -71,7 +78,7 @@ async def get_status(username, password, region):
     return account.vehicles
 
 
-def light_flash(username, password, region, vin):
+async def light_flash(username, password, region, vin):
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
@@ -80,7 +87,7 @@ def light_flash(username, password, region, vin):
     return status.state
 
 
-def door_lock(username, password, region, vin):
+async def door_lock(username, password, region, vin):
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
@@ -89,7 +96,7 @@ def door_lock(username, password, region, vin):
     return status.state
 
 
-def door_unlock(username, password, region, vin):
+async def door_unlock(username, password, region, vin):
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
@@ -98,7 +105,7 @@ def door_unlock(username, password, region, vin):
     return status.state
 
 
-def horn(username, password, region, vin):
+async def horn(username, password, region, vin):
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
@@ -107,7 +114,7 @@ def horn(username, password, region, vin):
     return status.state
 
 
-def air_conditioning(username, password, region, vin):
+async def air_conditioning(username, password, region, vin):
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
@@ -116,7 +123,7 @@ def air_conditioning(username, password, region, vin):
     return status.state
 
 
-def send_message(username, password, region, vin, subject, text):
+async def send_message(username, password, region, vin, subject, text):
     """Send a message to car."""
     account = ConnectedDriveAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
@@ -131,18 +138,21 @@ class Plugin(indigo.PluginBase):
 
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
+
         self.pluginPrefs = pluginPrefs
 
         pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t[%(levelname)8s] %(name)20s.%(funcName)-25s%(msg)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.plugin_file_handler.setFormatter(pfmt)
-        self.logLevel = int(self.pluginPrefs.get("logLevel", logging.INFO))
+        self.logLevel = int(pluginPrefs.get("logLevel", logging.INFO))
         self.indigo_log_handler.setLevel(self.logLevel)
         self.logger.debug(f"logLevel = {self.logLevel}")
 
-        self.updateFrequency = float(self.pluginPrefs.get('updateFrequency', "30")) * 60.0
+        self.updateFrequency = float(pluginPrefs.get('updateFrequency', "30")) * 60.0
         self.logger.debug(f"updateFrequency = {self.updateFrequency}")
         self.next_update = time.time()
         self.update_needed = False
+
+        self.units = pluginPrefs.get('units', "us")
 
         self.bridge_data = {}
         self.wrappers = {}
@@ -153,12 +163,6 @@ class Plugin(indigo.PluginBase):
         self.vehicle_data = {}
         self.vehicle_states = {}
 
-        try:
-            from bimmer_connected.account import ConnectedDriveAccount
-            from bimmer_connected.country_selector import get_region_from_name, valid_regions
-            from bimmer_connected.vehicle import VehicleViewDirection
-        except ImportError:
-            raise ImportError("'bimmer_connected' library missing.  Run 'pip3 install bimmer_connected' in Terminal window")
 
     def startup(self):
         self.logger.info("Starting Connected Drive")
@@ -193,9 +197,19 @@ class Plugin(indigo.PluginBase):
                     self.next_update = time.time() + self.updateFrequency
                     self.update_needed = False
 
-                    cmd = {'cmd': 'vehicles'}
-                    for devID in self.wrappers:
-                        self.wrapper_write(indigo.devices[devID].id, cmd)
+                    for acctDevID in self.cd_accounts.keys():
+                        acctDev = indigo.devices[acctDevID]
+                        vehicles = asyncio.run(get_status(acctDev.pluginProps['username'], acctDev.pluginProps['password'], acctDev.pluginProps['region']))
+                        for vehicle in vehicles:
+                            self.logger.debug(f"{acctDev.name}: vehicle = {vehicle.name} ({vehicle.vin})")
+                            self.logger.debug(f"{acctDev.name}: status = {vehicle.status.as_dict()}")
+                            # save the data
+ #                           self.vehicle_data[data['vin']] = {'account': acctDevID, 'properties': data['properties'], 'status': data['status']}
+
+                        # If there's an Indigo device for this vehicle, update it
+
+#                        vehicleDevID = self.cd_vehicles.get(data['vin'], None)
+
                 self.sleep(1.0)
         except self.StopThread:
             pass
@@ -244,10 +258,9 @@ class Plugin(indigo.PluginBase):
 
         states_list = []
         if data['status']:
-            units = self.pluginPrefs.get('units', "us")
             state_key = vehicleDevice.pluginProps["state_key"]
             status_value = data['status'][state_key]
-            ui_format, converter = status_format[units][state_key]
+            ui_format, converter = status_format[self.units][state_key]
             states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
 
             try:
