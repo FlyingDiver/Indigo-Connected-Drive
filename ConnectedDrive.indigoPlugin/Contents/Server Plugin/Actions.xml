@@ -17,4 +17,9 @@
         	</Field>
        </ConfigUI>
     </Action>
- </Actions>
+    <Action id="fetchVehicleData" uiPath="hidden">
+        <Name>Fetch Vehicle Data</Name>
+        <CallbackMethod>fetchVehicleDataAction</CallbackMethod>
+         <ConfigUI><Field id="vin" type="textfield"/></ConfigUI>
+   </Action>
+     </Actions>

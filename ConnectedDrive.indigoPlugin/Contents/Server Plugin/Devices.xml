@@ -21,14 +21,6 @@
         		</List>
         	</Field>
         </ConfigUI>
-        <States>
-			<State id="status">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Status</TriggerLabel>
-				<ControlPageLabel>Status</ControlPageLabel>
-			</State>
-        </States>
-    <UiDisplayStateId>status</UiDisplayStateId>
     </Device>
 
     <Device id="cdVehicle" type="custom">
@@ -53,7 +45,63 @@
                 <ValueType>String</ValueType>
                 <TriggerLabel>UI Status</TriggerLabel>
                 <ControlPageLabel>UI Status</ControlPageLabel>
-            </State>        
+            </State>
+            <State id="name">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Name</TriggerLabel>
+                <ControlPageLabel>Name</ControlPageLabel>
+            </State>
+            <State id="vin">
+                <ValueType>String</ValueType>
+                <TriggerLabel>VIN</TriggerLabel>
+                <ControlPageLabel>VIN</ControlPageLabel>
+            </State>
+            <State id="model">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Model</TriggerLabel>
+                <ControlPageLabel>Model</ControlPageLabel>
+            </State>
+            <State id="year">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Year</TriggerLabel>
+                <ControlPageLabel>Year</ControlPageLabel>
+            </State>
+            <State id="brand">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Brand</TriggerLabel>
+                <ControlPageLabel>Brand</ControlPageLabel>
+            </State>
+            <State id="driveTrain">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Drive Train</TriggerLabel>
+                <ControlPageLabel>Drive Train</ControlPageLabel>
+            </State>
+            <State id="all_lids_closed">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>all_lids_closed</TriggerLabel>
+                <ControlPageLabel>all_lids_closed</ControlPageLabel>
+            </State>
+            <State id="all_windows_closed">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>all_windows_closed</TriggerLabel>
+                <ControlPageLabel>all_windows_closed</ControlPageLabel>
+            </State>
+            <State id="all_doors_locked">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>all_doors_locked</TriggerLabel>
+                <ControlPageLabel>all_doors_locked</ControlPageLabel>
+            </State>
+            <State id="all_windows_closed">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>all_windows_closed</TriggerLabel>
+                <ControlPageLabel>all_windows_closed</ControlPageLabel>
+            </State>
+            <State id="fuel_percent">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Fuel Percent</TriggerLabel>
+                <ControlPageLabel>Fuel Percent</ControlPageLabel>
+            </State>
+
         </States>
         <UiDisplayStateId>status</UiDisplayStateId>
     </Device> 

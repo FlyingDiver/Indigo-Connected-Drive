@@ -147,3 +147,7 @@ bimmer_connected-0.8.11/
 account.vehicles.py
 
 ConnectedDrive.indigoPlugin/.idea/
+
+*.webloc
+
+fetchVehicleData.py
