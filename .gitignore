@@ -151,3 +151,5 @@ ConnectedDrive.indigoPlugin/.idea/
 *.webloc
 
 fetchVehicleData.py
+
+ConnectedDrive.indigoPlugin.zip
