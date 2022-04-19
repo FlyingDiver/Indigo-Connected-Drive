@@ -86,10 +86,10 @@
                 <TriggerLabel>all_windows_closed</TriggerLabel>
                 <ControlPageLabel>all_windows_closed</ControlPageLabel>
             </State>
-            <State id="all_doors_locked">
-                <ValueType>Boolean</ValueType>
-                <TriggerLabel>all_doors_locked</TriggerLabel>
-                <ControlPageLabel>all_doors_locked</ControlPageLabel>
+            <State id="door_lock_state">
+                <ValueType>String</ValueType>
+                <TriggerLabel>door_lock_state</TriggerLabel>
+                <ControlPageLabel>door_lock_state</ControlPageLabel>
             </State>
             <State id="all_windows_closed">
                 <ValueType>Boolean</ValueType>
@@ -101,7 +101,41 @@
                 <TriggerLabel>Fuel Percent</TriggerLabel>
                 <ControlPageLabel>Fuel Percent</ControlPageLabel>
             </State>
-
+           <State id="charging_level_hv">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>charging_level_hv</TriggerLabel>
+                <ControlPageLabel>charging_level_hv</ControlPageLabel>
+            </State>
+           <State id="mileage">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Mileage</TriggerLabel>
+                <ControlPageLabel>Mileage</ControlPageLabel>
+            </State>
+            <State id="gps_lat">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>gps_lat</TriggerLabel>
+                <ControlPageLabel>gps_lat</ControlPageLabel>
+            </State>
+           <State id="gps_long">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>gps_long</TriggerLabel>
+                <ControlPageLabel>gps_long</ControlPageLabel>
+            </State>
+           <State id="gps_heading">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>gps_heading</TriggerLabel>
+                <ControlPageLabel>gps_heading</ControlPageLabel>
+            </State>
+			<State id="status">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Status</TriggerLabel>
+				<ControlPageLabel>Status</ControlPageLabel>
+			</State>
+			<State id="timestamp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Timestamp</TriggerLabel>
+				<ControlPageLabel>Timestamp</ControlPageLabel>
+			</State>
         </States>
         <UiDisplayStateId>status</UiDisplayStateId>
     </Device> 
