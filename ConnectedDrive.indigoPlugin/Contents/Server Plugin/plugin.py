@@ -14,7 +14,7 @@ try:
     from bimmer_connected.country_selector import get_region_from_name, valid_regions
     from bimmer_connected.vehicle import VehicleViewDirection
 except ImportError:
-    raise ImportError("'bimmer_connected' library missing.  Run 'pip3 install bimmer_connected' in Terminal window")
+    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected aiohttp' in Terminal window, then reload plugin.")
 
 try:
     from aiohttp import ClientSession

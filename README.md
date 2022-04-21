@@ -13,9 +13,7 @@ Plugin for the BMW Connected Drive portal
 
 In Terminal.app enter:
 
-`pip3 install bimmer_connected`
-
-`pip3 install aiohttp`
+`pip3 install bimmer_connected aiohttp`
 
 Create a "Connected Drive Account" device with your Connected Drive login credentials.
 
