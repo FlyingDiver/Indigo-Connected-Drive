@@ -211,7 +211,12 @@ class Plugin(indigo.PluginBase):
     def _do_update(self, cd_account):
         self.logger.debug(f"{cd_account.name}: Starting Update")
 
-        account = asyncio.run(get_account(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region']))
+        try:
+            account = asyncio.run(get_account(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region']))
+        except Exception as err:
+            self.logger.warning(f"{cd_account.name}: get_account error: {err}")
+            return
+
         account.update_vehicle_states()
 
         for vehicle in account.vehicles:
