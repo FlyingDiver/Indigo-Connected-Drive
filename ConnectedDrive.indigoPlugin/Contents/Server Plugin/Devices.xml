@@ -133,8 +133,13 @@
 			</State>
 			<State id="timestamp">
 				<ValueType>String</ValueType>
-				<TriggerLabel>Timestamp</TriggerLabel>
-				<ControlPageLabel>Timestamp</ControlPageLabel>
+				<TriggerLabel>Data Timestamp</TriggerLabel>
+				<ControlPageLabel>Data Timestamp</ControlPageLabel>
+			</State>
+            <State id="last_update">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Last Update</TriggerLabel>
+				<ControlPageLabel>Last Update</ControlPageLabel>
 			</State>
         </States>
         <UiDisplayStateId>status</UiDisplayStateId>

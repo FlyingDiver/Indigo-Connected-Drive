@@ -13,7 +13,7 @@ Plugin for the BMW Connected Drive portal
 
 In Terminal.app enter:
 
-`pip3 install bimmer_connected aiohttp`
+`pip3 install bimmer_connected==0.9.0 aiohttp httpx`
 
 Create a "Connected Drive Account" device with your Connected Drive login credentials.
 
@@ -39,4 +39,4 @@ Additional data (beyond the device states) can be accessed using a Python script
 	}
 	vehicle_json = cd_plugin.executeAction("fetchVehicleData", props=props, waitUntilDone=True)
 	vehicle_data = json.loads(vehicle_json)
-	indigo.server.log(f"Got data for {vehicle_data['vehicle']['attributes']['year']} {vehicle_data['vehicle']['attributes']['model']}")
+	indigo.server.log(f"Got data for {vehicle_data['vehicle']['data']['year']} {vehicle_data['vehicle']['data']['model']}")

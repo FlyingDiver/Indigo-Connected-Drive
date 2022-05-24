@@ -6,60 +6,25 @@ import json
 import logging
 import requests
 import time
-
 import asyncio
 
 try:
-    from bimmer_connected.account import ConnectedDriveAccount
-    from bimmer_connected.country_selector import get_region_from_name, valid_regions
-    from bimmer_connected.vehicle import VehicleViewDirection
-except ImportError:
-    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected aiohttp' in Terminal window, then reload plugin.")
-
-try:
+    from bimmer_connected.account import MyBMWAccount
+    from bimmer_connected.api.regions import get_region_from_name, valid_regions
+    from bimmer_connected.vehicle.vehicle import VehicleViewDirection
+    from bimmer_connected.utils import MyBMWJSONEncoder
     from aiohttp import ClientSession
-except ImportError:
-    raise ImportError("'aiohttp' library missing.  Run 'pip3 install aiohttp' in Terminal window")
+except ImportError as err:
+    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected==0.9.0 aiohttp httpx' in Terminal window, then reload plugin.")
 
-def liters2gallons(liters):
-    return float(liters) / 3.785411784
-
-
-def km2miles(km):
-    return float(km) * 0.62137
-
-
-def no_convert(x):
-    return x
-
-
-status_format = {
-    "us": {
-        "charging_level_hv": (u"{}%", no_convert),
-        "door_lock_state": (u"{}", no_convert),
-        "fuel_percent": (u"{}%", no_convert),
-        "mileage": (u"{:.0f} miles", no_convert),
-        "remaining_fuel": (u"{:.1f} gal", liters2gallons),
-        "remaining_range_fuel": (u"{:.0f} mi", no_convert),
-    },
-    "metric": {
-        "charging_level_hv": (u"{}%", no_convert),
-        "door_lock_state": (u"{}", no_convert),
-        "fuel_percent": (u"{}%", no_convert),
-        "mileage": (u"{} km", no_convert),
-        "remaining_fuel": (u"{} ltrs", no_convert),
-        "remaining_range_fuel": (u"{} km", no_convert),
-    }
-}
-
-
-async def get_account(username, password, region):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+async def get_account_data(username, password, region):
+    account = MyBMWAccount(username, password, get_region_from_name(region))
+    await account.get_vehicles()
     return account
 
 
 async def light_flash(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -68,7 +33,7 @@ async def light_flash(username, password, region, vin):
 
 
 async def door_lock(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -77,7 +42,7 @@ async def door_lock(username, password, region, vin):
 
 
 async def door_unlock(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -86,7 +51,7 @@ async def door_unlock(username, password, region, vin):
 
 
 async def horn(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -95,7 +60,7 @@ async def horn(username, password, region, vin):
 
 
 async def air_conditioning(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -103,7 +68,7 @@ async def air_conditioning(username, password, region, vin):
     return status.state
 
 async def air_conditioning_off(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -111,7 +76,7 @@ async def air_conditioning_off(username, password, region, vin):
     return status.state
 
 async def charge_now(username, password, region, vin):
-    account = ConnectedDriveAccount(username, password, get_region_from_name(region))
+    account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
     if not vehicle:
         return None
@@ -209,74 +174,68 @@ class Plugin(indigo.PluginBase):
         self.logger.info(f"{device.name}: Stopping {device.deviceTypeId} Device {device.id}")
 
     def _do_update(self, cd_account):
-        self.logger.debug(f"{cd_account.name}: Starting Update")
-
         try:
-            account = asyncio.run(get_account(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region']))
+            account = asyncio.run(get_account_data(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region']))
         except Exception as err:
             self.logger.warning(f"{cd_account.name}: get_account error: {err}")
             return
 
-        account.update_vehicle_states()
-
         for vehicle in account.vehicles:
-            self.logger.debug(f"{cd_account.name}: Updating {vehicle.name} ({vehicle.vin})")
 
-            # clean up the non=serializable data
-            vehicle_dict = vehicle.as_dict()
-            del vehicle_dict['status']
-            status_dict = vehicle.status.as_dict()
-            del status_dict['condition_based_services']
-            del status_dict['lids']
-            del status_dict['windows']
-            timestamp = status_dict['timestamp'].strftime("%d %b %Y %H:%M:%S %Z")
-            del status_dict['timestamp']
+            # convert vehicle data to a pure Python dict and save it
+            self.vehicle_data[vehicle.vin] = {'account': cd_account.id, 'vehicle': json.loads(json.dumps(vehicle, cls=MyBMWJSONEncoder))}
 
-            self.vehicle_data[vehicle.vin] = {'account': cd_account.id,
-                                              'vehicle': vehicle_dict,
-                                              'status': status_dict,
-                                              }
-
+            # look for an Indigo device and matches this vehicle
             vehicleDevID = self.cd_vehicles.get(vehicle.vin, None)
             if not vehicleDevID:
                 self.logger.debug(f"{cd_account.name}: VIN not found: {vehicle.vin}")
                 return
+
             vehicleDevice = indigo.devices.get(int(vehicleDevID), None)
             if not vehicleDevice:
                 self.logger.debug(f"{cd_account.name}: Indigo device for vehicleDevID not found: {vehicleDevID}")
                 return
 
-            self.logger.debug(f"{cd_account.name}: Updating device {vehicleDevice.name} ({vehicleDevice.id})")
+            self.logger.debug(f"{cd_account.name}: Updating {vehicle.name} ({vehicle.vin}) -->  {vehicleDevice.name} ({vehicleDevice.id})")
 
             states_list = [{'key': 'name', 'value': vehicle.name},
                            {'key': 'vin', 'value': vehicle.vin},
-                           {'key': 'model', 'value': vehicle.model},
-                           {'key': 'year', 'value': vehicle.year},
                            {'key': 'brand', 'value': vehicle.brand},
-                           {'key': 'driveTrain', 'value': vehicle.driveTrain},
-                           {'key': 'all_lids_closed', 'value': vehicle.all_lids_closed},
-                           {'key': 'all_windows_closed', 'value': vehicle.all_windows_closed},
-                           {'key': 'door_lock_state', 'value': vehicle.door_lock_state},
-                           {'key': 'fuel_percent', 'value': vehicle.fuel_percent},
-                           {'key': 'mileage', 'value': status_dict['mileage'][0]},
-                           {'key': 'charging_level_hv', 'value': vehicle.charging_level_hv},
-                           {'key': 'gps_lat', 'value': status_dict['gps_position'][0]},
-                           {'key': 'gps_long', 'value': status_dict['gps_position'][1]},
-                           {'key': 'gps_heading', 'value': status_dict['gps_heading']},
-                           {'key': 'timestamp', 'value': timestamp},
+                           {'key': 'driveTrain', 'value': vehicle.drive_train},
+                           {'key': 'mileage', 'value': vehicle.mileage[0]},
+                           {'key': 'timestamp', 'value': vehicle.timestamp.strftime("%d %b %Y %H:%M:%S %Z")},
+                           {'key': 'model', 'value': vehicle.data['model']},
+                           {'key': 'year', 'value': vehicle.data['year']},
+                           {'key': 'all_lids_closed', 'value': vehicle.doors_and_windows.all_lids_closed},
+                           {'key': 'all_windows_closed', 'value': vehicle.doors_and_windows.all_windows_closed},
+                           {'key': 'door_lock_state', 'value': vehicle.doors_and_windows.door_lock_state},
+                           {'key': 'fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
+#                           {'key': 'charging_level_hv', 'value': vehicle.charging_level_hv},
+                           {'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude},
+                           {'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude},
+                           {'key': 'gps_heading', 'value': vehicle.vehicle_location.heading},
+                           {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
+
             state_key = vehicleDevice.pluginProps["state_key"]
             match state_key:
-                case 'mileage' | 'remaining_fuel' | 'remaining_range_fuel':
-                    status_value, status_units = status_dict[state_key]
-                case _:
-                    status_value = status_dict[state_key]
-                    status_units = None
+                case 'mileage':
+                    status_value = vehicle.mileage[0]
+                    status_ui = f"{vehicle.mileage[0]} {vehicle.mileage[1]}"
 
-            ui_format, converter = status_format[self.units][state_key]
-            if not status_value:
-                status_value = ""
-            states_list.append({'key': 'status', 'value': status_value, 'uiValue': ui_format.format(converter(status_value))})
+                case 'fuel_percent':
+                    status_value = vehicle.fuel_and_battery.remaining_fuel_percent
+                    status_ui = f"{vehicle.fuel_and_battery.remaining_fuel_percent}%"
+
+                case 'remaining_range_total':
+                    status_value = vehicle.fuel_and_battery.remaining_range_total[0]
+                    status_ui = f"{vehicle.fuel_and_battery.remaining_range_total[0]} {vehicle.fuel_and_battery.remaining_range_total[1]}"
+
+                case 'door_lock_state':
+                    status_value = vehicle.doors_and_windows.door_lock_state
+                    status_ui = f"{vehicle.doors_and_windows.door_lock_state}"
+
+            states_list.append({'key': 'status', 'value': status_value, 'uiValue': status_ui})
             vehicleDevice.updateStatesOnServer(states_list)
 
     def get_vehicle_list(self, filter="", valuesDict=None, typeId="", targetId=0):
@@ -284,20 +243,14 @@ class Plugin(indigo.PluginBase):
         retList = []
 
         for v in self.vehicle_data.values():
-            retList.append((v['vehicle']['attributes']['vin'], f"{v['vehicle']['attributes']['year']} {v['vehicle']['attributes']['model']}"))
+            retList.append((v['vehicle']['vin'], f"{v['vehicle']['data']['year']} {v['vehicle']['data']['model']}"))
         retList.sort(key=lambda tup: tup[1])
         return retList
 
     def get_vehicle_state_list(self, filter="", valuesDict=None, typeId="", targetId=0):
         self.logger.threaddebug(f"get_vehicle_state_list: typeId = {typeId}, targetId = {targetId}, valuesDict = {valuesDict}")
         retList = []
-
-        vin = valuesDict.get('address', None)
-        if not vin:
-            return retList
-
-        vehicle_status = self.vehicle_data[vin]['status']
-        for s in ['charging_level_hv', 'fuel_percent', 'mileage', 'remaining_fuel', 'remaining_range_fuel', 'door_lock_state']:
+        for s in ['fuel_percent', 'mileage', 'remaining_range_total', 'door_lock_state']:
             retList.append((s, s))
         retList.sort(key=lambda tup: tup[1])
         return retList
