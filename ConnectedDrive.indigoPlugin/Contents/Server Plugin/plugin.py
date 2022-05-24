@@ -6,6 +6,7 @@ import json
 import logging
 import requests
 import time
+import datetime
 import asyncio
 
 try:
@@ -203,7 +204,7 @@ class Plugin(indigo.PluginBase):
                            {'key': 'brand', 'value': vehicle.brand},
                            {'key': 'driveTrain', 'value': vehicle.drive_train},
                            {'key': 'mileage', 'value': vehicle.mileage[0]},
-                           {'key': 'timestamp', 'value': vehicle.timestamp.strftime("%d %b %Y %H:%M:%S %Z")},
+                           {'key': 'timestamp', 'value': vehicle.timestamp.replace(tzinfo=datetime.timezone.utc).astimezone().strftime("%d %b %Y %H:%M:%S %Z")},
                            {'key': 'model', 'value': vehicle.data['model']},
                            {'key': 'year', 'value': vehicle.data['year']},
                            {'key': 'all_lids_closed', 'value': vehicle.doors_and_windows.all_lids_closed},
