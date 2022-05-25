@@ -81,6 +81,16 @@
                 <TriggerLabel>all_lids_closed</TriggerLabel>
                 <ControlPageLabel>all_lids_closed</ControlPageLabel>
             </State>
+            <State id="is_vehicle_active">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>Vehicle Active</TriggerLabel>
+                <ControlPageLabel>Vehicle Active</ControlPageLabel>
+            </State>
+            <State id="is_service_required">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>Service Required</TriggerLabel>
+                <ControlPageLabel>Service Required</ControlPageLabel>
+            </State>
             <State id="open_lids">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Open Lids</TriggerLabel>
