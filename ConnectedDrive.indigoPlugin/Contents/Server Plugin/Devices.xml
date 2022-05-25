@@ -111,15 +111,25 @@
                 <TriggerLabel>door_lock_state</TriggerLabel>
                 <ControlPageLabel>door_lock_state</ControlPageLabel>
             </State>
-            <State id="fuel_percent">
+            <State id="is_charger_connected">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>Charger Connected</TriggerLabel>
+                <ControlPageLabel>Charger Connected</ControlPageLabel>
+            </State>
+            <State id="remaining_fuel">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Remaining Fuel</TriggerLabel>
+                <ControlPageLabel>Remaining Fuel</ControlPageLabel>
+            </State>
+            <State id="remaining_fuel_percent">
                 <ValueType>Number</ValueType>
                 <TriggerLabel>Fuel Percent</TriggerLabel>
                 <ControlPageLabel>Fuel Percent</ControlPageLabel>
             </State>
-           <State id="charging_level_hv">
+            <State id="remaining_battery_percent">
                 <ValueType>Number</ValueType>
-                <TriggerLabel>charging_level_hv</TriggerLabel>
-                <ControlPageLabel>charging_level_hv</ControlPageLabel>
+                <TriggerLabel>Battery Percent</TriggerLabel>
+                <ControlPageLabel>Battery Percent</ControlPageLabel>
             </State>
            <State id="mileage">
                 <ValueType>Number</ValueType>

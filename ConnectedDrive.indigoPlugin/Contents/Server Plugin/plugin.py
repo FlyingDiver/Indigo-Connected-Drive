@@ -213,8 +213,10 @@ class Plugin(indigo.PluginBase):
                            {'key': 'all_windows_closed', 'value': vehicle.doors_and_windows.all_windows_closed},
                            {'key': 'open_windows', 'value': ""},
                            {'key': 'door_lock_state', 'value': vehicle.doors_and_windows.door_lock_state},
-                           {'key': 'fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
-#                           {'key': 'charging_level_hv', 'value': vehicle.charging_level_hv},
+                           {'key': 'is_charger_connected', 'value': vehicle.fuel_and_battery.is_charger_connected},
+                           {'key': 'remaining_fuel', 'value': vehicle.fuel_and_battery.remaining_fuel.value},
+                           {'key': 'remaining_fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
+                           {'key': 'remaining_battery_percent', 'value': vehicle.fuel_and_battery.remaining_battery_percent},
                            {'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude},
                            {'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude},
                            {'key': 'gps_heading', 'value': vehicle.vehicle_location.heading},
@@ -231,15 +233,25 @@ class Plugin(indigo.PluginBase):
                 open_window_list = ", ".join(window.name for window in vehicle.doors_and_windows.open_windows)
             states_list.append({'key': 'open_windows', 'value': open_window_list})
 
+            self.logger.debug(f"{cd_account.name}: vehicle.fuel_and_battery.remaining_fuel = {vehicle.fuel_and_battery.remaining_fuel}")
+
             state_key = vehicleDevice.pluginProps["state_key"]
             match state_key:
                 case 'mileage':
                     status_value = vehicle.mileage[0]
                     status_ui = f"{vehicle.mileage[0]} {vehicle.mileage[1]}"
 
-                case 'fuel_percent':
+                case 'remaining_fuel':
+                    status_value = vehicle.fuel_and_battery.remaining_fuel[0]
+                    status_ui = f"{vehicle.fuel_and_battery.remaining_fuel.value} {vehicle.fuel_and_battery.remaining_fuel.unit}"
+
+                case 'remaining_fuel_percent':
                     status_value = vehicle.fuel_and_battery.remaining_fuel_percent
                     status_ui = f"{vehicle.fuel_and_battery.remaining_fuel_percent}%"
+
+                case 'remaining_battery_percent':
+                    status_value = vehicle.fuel_and_battery.remaining_battery_percent
+                    status_ui = f"{vehicle.fuel_and_battery.remaining_battery_percent}%"
 
                 case 'remaining_range_total':
                     status_value = vehicle.fuel_and_battery.remaining_range_total[0]
@@ -267,7 +279,7 @@ class Plugin(indigo.PluginBase):
     def get_vehicle_state_list(self, filter="", valuesDict=None, typeId="", targetId=0):
         self.logger.threaddebug(f"get_vehicle_state_list: typeId = {typeId}, targetId = {targetId}, valuesDict = {valuesDict}")
         retList = []
-        for s in ['fuel_percent', 'mileage', 'remaining_range_total', 'door_lock_state']:
+        for s in ['mileage', 'remaining_fuel', 'remaining_fuel_percent', 'remaining_battery_percent', 'remaining_range_total', 'door_lock_state']:
             retList.append((s, s))
         retList.sort(key=lambda tup: tup[1])
         return retList
