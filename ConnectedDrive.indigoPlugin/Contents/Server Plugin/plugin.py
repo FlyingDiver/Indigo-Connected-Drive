@@ -209,6 +209,7 @@ class Plugin(indigo.PluginBase):
                            {'key': 'year', 'value': vehicle.data['year']},
                            {'key': 'all_lids_closed', 'value': vehicle.doors_and_windows.all_lids_closed},
                            {'key': 'all_windows_closed', 'value': vehicle.doors_and_windows.all_windows_closed},
+                           {'key': 'open_windows', 'value': ""},
                            {'key': 'door_lock_state', 'value': vehicle.doors_and_windows.door_lock_state},
                            {'key': 'fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
 #                           {'key': 'charging_level_hv', 'value': vehicle.charging_level_hv},
@@ -217,6 +218,16 @@ class Plugin(indigo.PluginBase):
                            {'key': 'gps_heading', 'value': vehicle.vehicle_location.heading},
                            {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
+
+            open_lid_list = ""
+            if not vehicle.doors_and_windows.all_lids_closed:
+                open_lid_list = ", ".join(lid.name for lid in vehicle.doors_and_windows.open_lids)
+            states_list.append({'key': 'open_lids', 'value': open_lid_list})
+
+            open_window_list = ""
+            if not vehicle.doors_and_windows.all_windows_closed:
+                open_window_list = ", ".join(window.name for window in vehicle.doors_and_windows.open_windows)
+            states_list.append({'key': 'open_windows', 'value': open_window_list})
 
             state_key = vehicleDevice.pluginProps["state_key"]
             match state_key:
@@ -236,6 +247,9 @@ class Plugin(indigo.PluginBase):
                     status_value = vehicle.doors_and_windows.door_lock_state
                     status_ui = f"{vehicle.doors_and_windows.door_lock_state}"
 
+                case _:
+                    status_value = ""
+                    status_ui = ""
             states_list.append({'key': 'status', 'value': status_value, 'uiValue': status_ui})
             vehicleDevice.updateStatesOnServer(states_list)
 

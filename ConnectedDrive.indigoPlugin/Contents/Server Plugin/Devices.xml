@@ -81,20 +81,25 @@
                 <TriggerLabel>all_lids_closed</TriggerLabel>
                 <ControlPageLabel>all_lids_closed</ControlPageLabel>
             </State>
+            <State id="open_lids">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Open Lids</TriggerLabel>
+                <ControlPageLabel>Open Lids</ControlPageLabel>
+            </State>
             <State id="all_windows_closed">
                 <ValueType>Boolean</ValueType>
                 <TriggerLabel>all_windows_closed</TriggerLabel>
                 <ControlPageLabel>all_windows_closed</ControlPageLabel>
+            </State>
+            <State id="open_windows">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Open Windows</TriggerLabel>
+                <ControlPageLabel>Open Windows</ControlPageLabel>
             </State>
             <State id="door_lock_state">
                 <ValueType>String</ValueType>
                 <TriggerLabel>door_lock_state</TriggerLabel>
                 <ControlPageLabel>door_lock_state</ControlPageLabel>
-            </State>
-            <State id="all_windows_closed">
-                <ValueType>Boolean</ValueType>
-                <TriggerLabel>all_windows_closed</TriggerLabel>
-                <ControlPageLabel>all_windows_closed</ControlPageLabel>
             </State>
             <State id="fuel_percent">
                 <ValueType>Number</ValueType>
