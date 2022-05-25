@@ -1,4 +1,4 @@
-# Indigo-BMW-CD
+# Indigo-ConnectedDrive
 Plugin for the BMW Connected Drive portal
 
 | Requirement            |                     |   |
