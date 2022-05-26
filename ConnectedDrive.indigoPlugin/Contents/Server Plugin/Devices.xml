@@ -151,6 +151,11 @@
                 <TriggerLabel>gps_heading</TriggerLabel>
                 <ControlPageLabel>gps_heading</ControlPageLabel>
             </State>
+           <State id="distance">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Distance from Home</TriggerLabel>
+                <ControlPageLabel>Distance from Home</ControlPageLabel>
+            </State>
 			<State id="status">
 				<ValueType>String</ValueType>
 				<TriggerLabel>Status</TriggerLabel>

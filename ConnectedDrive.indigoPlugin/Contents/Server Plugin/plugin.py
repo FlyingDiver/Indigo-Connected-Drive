@@ -18,6 +18,23 @@ try:
 except ImportError as err:
     raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected==0.9.0 aiohttp httpx' in Terminal window, then reload plugin.")
 
+from math import radians, cos, sin, asin, sqrt
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    # Radius of earth in kilometers is 6371
+    km = 6371* c
+    return km
+
 async def get_account_data(username, password, region):
     account = MyBMWAccount(username, password, get_region_from_name(region))
     await account.get_vehicles()
@@ -199,6 +216,9 @@ class Plugin(indigo.PluginBase):
 
             self.logger.debug(f"{cd_account.name}: Updating {vehicle.name} ({vehicle.vin}) -->  {vehicleDevice.name} ({vehicleDevice.id})")
 
+            (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
+            distance =  haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
+
             states_list = [{'key': 'name', 'value': vehicle.name},
                            {'key': 'vin', 'value': vehicle.vin},
                            {'key': 'brand', 'value': vehicle.brand},
@@ -220,6 +240,7 @@ class Plugin(indigo.PluginBase):
                            {'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude},
                            {'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude},
                            {'key': 'gps_heading', 'value': vehicle.vehicle_location.heading},
+                           {'key': 'distance', 'value': distance},
                            {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
 
