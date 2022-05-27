@@ -236,6 +236,7 @@ class Plugin(indigo.PluginBase):
                            {'key': 'is_charger_connected', 'value': vehicle.fuel_and_battery.is_charger_connected},
                            {'key': 'remaining_fuel', 'value': vehicle.fuel_and_battery.remaining_fuel.value},
                            {'key': 'remaining_fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
+                           {'key': 'remaining_range_total', 'value': vehicle.fuel_and_battery.remaining_range_total.value},
                            {'key': 'remaining_battery_percent', 'value': vehicle.fuel_and_battery.remaining_battery_percent},
                            {'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude},
                            {'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude},
@@ -253,8 +254,6 @@ class Plugin(indigo.PluginBase):
             if not vehicle.doors_and_windows.all_windows_closed:
                 open_window_list = ", ".join(window.name for window in vehicle.doors_and_windows.open_windows)
             states_list.append({'key': 'open_windows', 'value': open_window_list})
-
-            self.logger.debug(f"{cd_account.name}: vehicle.fuel_and_battery.remaining_fuel = {vehicle.fuel_and_battery.remaining_fuel}")
 
             state_key = vehicleDevice.pluginProps["state_key"]
             match state_key:

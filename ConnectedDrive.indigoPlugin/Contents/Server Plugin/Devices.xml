@@ -131,6 +131,11 @@
                 <TriggerLabel>Battery Percent</TriggerLabel>
                 <ControlPageLabel>Battery Percent</ControlPageLabel>
             </State>
+            <State id="remaining_range_total">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Remaining Range</TriggerLabel>
+                <ControlPageLabel>Remaining Range</ControlPageLabel>
+            </State>
            <State id="mileage">
                 <ValueType>Number</ValueType>
                 <TriggerLabel>Mileage</TriggerLabel>
