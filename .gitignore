@@ -153,3 +153,5 @@ ConnectedDrive.indigoPlugin/.idea/
 fetchVehicleData.py
 
 ConnectedDrive.indigoPlugin.zip
+
+.idea/

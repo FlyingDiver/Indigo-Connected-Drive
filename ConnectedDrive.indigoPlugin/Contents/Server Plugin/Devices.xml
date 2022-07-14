@@ -46,11 +46,6 @@
                 <TriggerLabel>UI Status</TriggerLabel>
                 <ControlPageLabel>UI Status</ControlPageLabel>
             </State>
-            <State id="name">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Name</TriggerLabel>
-                <ControlPageLabel>Name</ControlPageLabel>
-            </State>
             <State id="vin">
                 <ValueType>String</ValueType>
                 <TriggerLabel>VIN</TriggerLabel>

@@ -219,16 +219,15 @@ class Plugin(indigo.PluginBase):
             (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
             distance =  haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
 
-            states_list = [{'key': 'name', 'value': vehicle.name},
-                           {'key': 'vin', 'value': vehicle.vin},
+            states_list = [{'key': 'vin', 'value': vehicle.vin},
                            {'key': 'brand', 'value': vehicle.brand},
                            {'key': 'driveTrain', 'value': vehicle.drive_train},
                            {'key': 'is_vehicle_active', 'value': vehicle.is_vehicle_active},
                            {'key': 'is_service_required', 'value': vehicle.condition_based_services.is_service_required},
                            {'key': 'mileage', 'value': vehicle.mileage[0], 'uiValue': f"{vehicle.mileage[0]} {vehicle.mileage[1]}"},
                            {'key': 'timestamp', 'value': vehicle.timestamp.replace(tzinfo=datetime.timezone.utc).astimezone().strftime("%d %b %Y %H:%M:%S %Z")},
-                           {'key': 'model', 'value': vehicle.data['model']},
-                           {'key': 'year', 'value': vehicle.data['year']},
+                           {'key': 'model', 'value': vehicle.data['attributes']['model']},
+                           {'key': 'year', 'value': vehicle.data['attributes']['year']},
                            {'key': 'all_lids_closed', 'value': vehicle.doors_and_windows.all_lids_closed},
                            {'key': 'all_windows_closed', 'value': vehicle.doors_and_windows.all_windows_closed},
                            {'key': 'open_windows', 'value': ""},
@@ -292,7 +291,7 @@ class Plugin(indigo.PluginBase):
         retList = []
 
         for v in self.vehicle_data.values():
-            retList.append((v['vehicle']['vin'], f"{v['vehicle']['data']['year']} {v['vehicle']['data']['model']}"))
+            retList.append((v['vehicle']['vin'], f"{v['vehicle']['data']['attributes']['year']} {v['vehicle']['data']['attributes']['model']}"))
         retList.sort(key=lambda tup: tup[1])
         return retList
 
