@@ -16,7 +16,7 @@ try:
     from bimmer_connected.utils import MyBMWJSONEncoder
     from aiohttp import ClientSession
 except ImportError as err:
-    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected==0.9.0 aiohttp httpx' in Terminal window, then reload plugin.")
+    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected aiohttp httpx' in Terminal window, then reload plugin.")
 
 from math import radians, cos, sin, asin, sqrt
 def haversine(lon1, lat1, lon2, lat2):
@@ -216,8 +216,11 @@ class Plugin(indigo.PluginBase):
 
             self.logger.debug(f"{cd_account.name}: Updating {vehicle.name} ({vehicle.vin}) -->  {vehicleDevice.name} ({vehicleDevice.id})")
 
-            (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
-            distance =  haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
+            try:
+                (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
+                distance =  haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
+            except:
+                distance = 0.0
 
             states_list = [{'key': 'vin', 'value': vehicle.vin},
                            {'key': 'brand', 'value': vehicle.brand},
