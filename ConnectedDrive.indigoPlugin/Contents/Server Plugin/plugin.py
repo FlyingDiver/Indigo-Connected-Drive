@@ -8,17 +8,18 @@ import requests
 import time
 import datetime
 import asyncio
+from importlib.metadata import version
+from math import radians, cos, sin, asin, sqrt
 
 try:
+    from aiohttp import ClientSession
     from bimmer_connected.account import MyBMWAccount
     from bimmer_connected.api.regions import get_region_from_name, valid_regions
     from bimmer_connected.vehicle.vehicle import VehicleViewDirection
     from bimmer_connected.utils import MyBMWJSONEncoder
-    from aiohttp import ClientSession
 except ImportError as err:
-    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected aiohttp httpx' in Terminal window, then reload plugin.")
+    raise ImportError("'Required Python libraries missing.  Run 'pip3 install bimmer_connected aiohttp' in Terminal window, then reload plugin.")
 
-from math import radians, cos, sin, asin, sqrt
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points
@@ -40,7 +41,6 @@ async def get_account_data(username, password, region):
     await account.get_vehicles()
     return account
 
-
 async def light_flash(username, password, region, vin):
     account = MyBMWAccount(username, password, get_region_from_name(region))
     vehicle = account.get_vehicle(vin)
@@ -48,7 +48,6 @@ async def light_flash(username, password, region, vin):
         return None
     status = vehicle.remote_services.trigger_remote_light_flash()
     return status.state
-
 
 async def door_lock(username, password, region, vin):
     account = MyBMWAccount(username, password, get_region_from_name(region))
