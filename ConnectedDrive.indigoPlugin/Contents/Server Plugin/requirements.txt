@@ -1,0 +1,2 @@
+bimmer-connected==0.14.6
+aiohttp==3.9.1
