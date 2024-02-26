@@ -11,10 +11,6 @@ Plugin for the BMW Connected Drive portal
 
 ## Installation Instructions
 
-In Terminal.app enter:
-
-`pip3 install bimmer_connected==0.9.0 aiohttp httpx`
-
 Create a "Connected Drive Account" device with your Connected Drive login credentials.
 
 Wait for the  plugin to report number of vehicles found in Indigo Log.

@@ -28,12 +28,12 @@ def haversine(lon1, lat1, lon2, lat2):
     # convert decimal degrees to radians
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
     # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    d_lon = lon2 - lon1
+    d_lat = lat2 - lat1
+    a = sin(d_lat/2)**2 + cos(lat1) * cos(lat2) * sin(d_lon/2)**2
     c = 2 * asin(sqrt(a))
     # Radius of earth in kilometers is 6371
-    km = 6371* c
+    km = 6371 * c
     return km
 
 async def get_account_data(username, password, region):
@@ -193,8 +193,8 @@ class Plugin(indigo.PluginBase):
     def _do_update(self, cd_account):
         try:
             account = asyncio.run(get_account_data(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region']))
-        except Exception as err:
-            self.logger.warning(f"{cd_account.name}: get_account error: {err}")
+        except Exception as e:
+            self.logger.warning(f"{cd_account.name}: get_account error: {e}")
             return
 
         for vehicle in account.vehicles:
@@ -217,8 +217,8 @@ class Plugin(indigo.PluginBase):
 
             try:
                 (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
-                distance =  haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
-            except:
+                distance = haversine(longitude, latitude, vehicle.vehicle_location.location.longitude, vehicle.vehicle_location.location.latitude)
+            except (Exception,):
                 distance = 0.0
 
             states_list = [{'key': 'vin', 'value': vehicle.vin},
@@ -239,12 +239,14 @@ class Plugin(indigo.PluginBase):
                            {'key': 'remaining_fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
                            {'key': 'remaining_range_total', 'value': vehicle.fuel_and_battery.remaining_range_total.value},
                            {'key': 'remaining_battery_percent', 'value': vehicle.fuel_and_battery.remaining_battery_percent},
-                           {'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude},
-                           {'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude},
-                           {'key': 'gps_heading', 'value': vehicle.vehicle_location.heading},
                            {'key': 'distance', 'value': distance},
                            {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
+
+            if vehicle.vehicle_location:
+                states_list.append({'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude})
+                states_list.append({'key': 'gps_long', 'value': vehicle.vehicle_location.location.longitude})
+                states_list.append({'key': 'gps_heading', 'value': vehicle.vehicle_location.heading})
 
             open_lid_list = ""
             if not vehicle.doors_and_windows.all_lids_closed:
