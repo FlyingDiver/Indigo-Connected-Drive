@@ -148,18 +148,25 @@ class Plugin(indigo.PluginBase):
                                    get_region_from_name(valuesDict.get("region")),
                                    hcaptcha_token=valuesDict.get("captcha_token"))
         except Exception as e:
-            self.logger.debug(f"get_tokens error: {e}")
+            self.logger.debug(f"get_tokens create account error: {e}")
+            valuesDict["authStatus"] = "Authentication Failed"
             return False, valuesDict, {"get_tokens": f"Error: {e}"}
+
+        self.cd_accounts[devId] = account
+        try:
+            auth_data = asyncio.run(self.get_account_data(account))
+        except Exception as e:
+            self.logger.debug(f"get_tokens get data error: {e}")
+            valuesDict["authStatus"] = "Authentication Failed"
+            return False, valuesDict, {"get_tokens": f"Error: {e}"}
+
+        if auth_data:
+            valuesDict["authStatus"] = "Authenticated"
+            self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(devId)] = json.dumps(auth_data)
+            self.savePluginPrefs()
         else:
-            self.cd_accounts[devId] = account
-            auth_data = self.event_loop.create_task(self.get_account_data(account))
-            if auth_data:
-                valuesDict["authStatus"] = "Authenticated"
-                self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(devId)] = json.dumps(auth_data)
-                self.savePluginPrefs()
-            else:
-                valuesDict["authStatus"] = "Authentication Failed"
-            self.need_update = True
+            valuesDict["authStatus"] = "Authentication Failed"
+        self.need_update = True
 
         return valuesDict
 
