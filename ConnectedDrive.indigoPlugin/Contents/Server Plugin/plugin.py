@@ -4,7 +4,6 @@
 import indigo
 import json
 import logging
-# import requests
 import contextlib
 import time
 import datetime
@@ -12,7 +11,6 @@ import asyncio
 from aiohttp import ClientSession
 import threading
 
-# from importlib.metadata import version
 from math import radians, cos, sin, asin, sqrt
 
 from bimmer_connected.account import MyBMWAccount
@@ -39,89 +37,7 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6371 * c
     return km
 
-
-async def get_account_data(account):
-    await account.get_vehicles()
-    auth_data = json.dumps(
-        {
-            "refresh_token": account.config.authentication.refresh_token,
-            "gcid": account.config.authentication.gcid,
-            "access_token": account.config.authentication.access_token,
-        }
-    )
-    print(f"Found {len(account.vehicles)} vehicles: {','.join([v.name for v in account.vehicles])}")
-
-    for vehicle in account.vehicles:
-        print(f"VIN: {vehicle.vin}")
-        print(f"Mileage: {vehicle.mileage.value} {vehicle.mileage.unit}")
-        print("Vehicle data:")
-        print(json.dumps(account.vehicles, cls=MyBMWJSONEncoder, indent=4))
-
-    return auth_data
-
-
-async def light_flash(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_light_flash()
-    return status.state
-
-
-async def door_lock(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_door_lock()
-    return status.state
-
-
-async def door_unlock(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_door_unlock()
-    return status.state
-
-
-async def horn(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_horn()
-    return status.state
-
-
-async def air_conditioning(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_air_conditioning()
-    return status.state
-
-
-async def air_conditioning_off(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_remote_air_conditioning_stop()
-    return status.state
-
-
-async def charge_now(username, password, region, vin, hcaptcha_token):
-    account = MyBMWAccount(username, password, get_region_from_name(region), hcaptcha_token=hcaptcha_token)
-    vehicle = account.get_vehicle(vin)
-    if not vehicle:
-        return None
-    status = vehicle.remote_services.trigger_charge_nowp()
-    return status.state
-
+########################################################################################
 
 class Plugin(indigo.PluginBase):
 
@@ -156,10 +72,6 @@ class Plugin(indigo.PluginBase):
 
     def startup(self):
         threading.Thread(target=self.run_async_thread).start()
-        self.logger.debug("startup complete")
-
-    def shutdown(self):
-        self.logger.debug("shutdown complete")
 
     def run_async_thread(self):
         self.logger.debug("run_async_thread starting")
@@ -183,9 +95,11 @@ class Plugin(indigo.PluginBase):
                 self.need_update = False
 
                 for dev_id in self.cd_accounts.keys():
-                    await self._do_update(dev_id)
+                    await self.do_account_update(dev_id)
 
         self.logger.debug("async_main: exiting")
+
+########################################################################################
 
     @staticmethod
     def validatePrefsConfigUi(valuesDict):
@@ -234,14 +148,14 @@ class Plugin(indigo.PluginBase):
                                    get_region_from_name(valuesDict.get("region")),
                                    hcaptcha_token=valuesDict.get("captcha_token"))
         except Exception as e:
-            self.logger.debug(f"validateDeviceConfigUi error:, {e}")
-            return False, valuesDict, {"captcha_token": f"Error: {e}"}
+            self.logger.debug(f"get_tokens error: {e}")
+            return False, valuesDict, {"get_tokens": f"Error: {e}"}
         else:
             self.cd_accounts[devId] = account
-            auth_data = asyncio.run(get_account_data(account))
+            auth_data = self.event_loop.create_task(self.get_account_data(account))
             if auth_data:
                 valuesDict["authStatus"] = "Authenticated"
-                self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(devId)] = auth_data
+                self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(devId)] = json.dumps(auth_data)
                 self.savePluginPrefs()
             else:
                 valuesDict["authStatus"] = "Authentication Failed"
@@ -256,7 +170,6 @@ class Plugin(indigo.PluginBase):
 
         if device.deviceTypeId == "cdAccount":
 
-            auth_json = self.pluginPrefs.get(AUTH_TOKEN_PLUGIN_PREF.format(device.id))
             account = MyBMWAccount(device.pluginProps['username'], device.pluginProps['password'], get_region_from_name(device.pluginProps['region']))
             self.cd_accounts[device.id] = account
             if auth_json := self.pluginPrefs.get(AUTH_TOKEN_PLUGIN_PREF.format(device.id)):
@@ -283,31 +196,48 @@ class Plugin(indigo.PluginBase):
         elif device.deviceTypeId == "cdVehicle":
             del self.cd_vehicles[device.address]
 
-    async def _do_update(self, dev_id):
-        self.logger.debug(f"_do_update: {indigo.devices[dev_id].name}")
+    async def get_account_data(self, account):
+        self.logger.debug(f"get_account_data")
+        await account.get_vehicles()
+        return {
+            "refresh_token": account.config.authentication.refresh_token,
+            "gcid": account.config.authentication.gcid,
+            "access_token": account.config.authentication.access_token,
+        }
 
-        cd_account = self.cd_accounts[dev_id]
-        auth_data = await get_account_data(cd_account)
-        self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(dev_id)] = auth_data
+    async def do_account_update(self, account_dev_id):
+        account_dev = indigo.devices[int(account_dev_id)]
+        self.logger.debug(f"{account_dev.name}: do_account_update")
+
+        cd_account = self.cd_accounts[account_dev_id]
+        auth_data = await self.get_account_data(cd_account)
+        self.logger.debug(f"{account_dev.name}: {auth_data=}")
+
+        states_list = [{'key': 'refresh_token', 'value': auth_data['refresh_token']},
+                       {'key': 'gcid', 'value': auth_data['gcid']},
+                       {'key': 'auth_token', 'value': auth_data['access_token']}]
+        account_dev.updateStatesOnServer(states_list)
+
+        self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(account_dev_id)] = json.dumps(auth_data)
         self.savePluginPrefs()
 
         for vehicle in cd_account.vehicles:
 
             # convert vehicle data to a pure Python dict and save it
-            self.vehicle_data[vehicle.vin] = {'account': cd_account.id, 'vehicle': json.loads(json.dumps(vehicle, cls=MyBMWJSONEncoder))}
+            self.vehicle_data[vehicle.vin] = {'account': account_dev_id, 'vehicle': json.loads(json.dumps(vehicle, cls=MyBMWJSONEncoder))}
 
-            # look for an Indigo device and matches this vehicle
-            vehicleDevID = self.cd_vehicles.get(vehicle.vin, None)
+            # look for an Indigo device that matches this vehicle
+            vehicleDevID = self.cd_vehicles.get(vehicle.vin)
             if not vehicleDevID:
-                self.logger.debug(f"{cd_account.name}: VIN not found: {vehicle.vin}")
-                return
+                self.logger.debug(f"{account_dev.name}: VIN not found: {vehicle.vin}")
+                continue
 
-            vehicleDevice = indigo.devices.get(int(vehicleDevID), None)
+            vehicleDevice = indigo.devices.get(int(vehicleDevID))
             if not vehicleDevice:
-                self.logger.debug(f"{cd_account.name}: Indigo device for vehicleDevID not found: {vehicleDevID}")
-                return
+                self.logger.debug(f"{account_dev.name}: Indigo device for vehicleDevID not found: {vehicleDevID}")
+                continue
 
-            self.logger.debug(f"{cd_account.name}: Updating {vehicle.name} ({vehicle.vin}) -->  {vehicleDevice.name} ({vehicleDevice.id})")
+            self.logger.debug(f"{account_dev.name}: Updating {vehicle.name} ({vehicle.vin}) -->  {vehicleDevice.name} ({vehicleDevice.id})")
 
             try:
                 (latitude, longitude) = indigo.server.getLatitudeAndLongitude()
@@ -377,7 +307,7 @@ class Plugin(indigo.PluginBase):
 
                 case 'door_lock_state':
                     status_value = vehicle.doors_and_windows.door_lock_state
-                    status_ui = f"{vehicle.doors_and_windows.door_lock_state}"
+                    status_ui = vehicle.doors_and_windows.door_lock_state
 
                 case _:
                     status_value = ""
@@ -421,53 +351,66 @@ class Plugin(indigo.PluginBase):
                 f"Data for VIN {vin}:\n{json.dumps(self.vehicle_data[vin], skipkeys=True, sort_keys=True, indent=4, separators=(',', ': '))}")
         return True
 
-    def sendCommandAction(self, pluginAction, vehicleDevice, callerWaitingForResult):
-        self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} for VIN {vehicleDevice.address}")
-        cd_account = indigo.devices[int(self.vehicle_data[vehicleDevice.address]['account'])]
-        self.logger.debug(f"{vehicleDevice.name}: sendCommandAction using cd_account: {cd_account.name}")
+    def sendCommandAction(self, plugin_action, vehicle_device, callerWaitingForResult):
+        self.logger.debug(f"{vehicle_device.name}: sendCommandAction {plugin_action.props['serviceCode']} for VIN {vehicle_device.address}")
+        cd_account_device = indigo.devices[int(self.vehicle_data[vehicle_device.address]['account'])]
+        self.logger.debug(f"{vehicle_device.name}: sendCommandAction using cd_account_device: {cd_account_device.name}")
 
-        match pluginAction.props["serviceCode"]:
-            case 'light':
-                ret = asyncio.run(
-                    light_flash(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'lock':
-                ret = asyncio.run(door_lock(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                            vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'unlock':
-                ret = asyncio.run(
-                    door_unlock(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'horn':
-                ret = asyncio.run(horn(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                       vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'climate':
-                ret = asyncio.run(
-                    air_conditioning(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                     vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'climate_off':
-                ret = asyncio.run(
-                    air_conditioning_off(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                         vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case 'charge_now':
-                ret = asyncio.run(charge_now(cd_account.pluginProps['username'], cd_account.pluginProps['password'], cd_account.pluginProps['region'],
-                                             vehicleDevice.address, cd_account.pluginProps['captcha_token']))
-                self.logger.debug(f"{vehicleDevice.name}: sendCommandAction {pluginAction.props['serviceCode']} result: {ret}")
-
-            case _:
-                self.logger.warning(f"{vehicleDevice.name}: sendCommandAction unknown serviceCode: {serviceCode}")
+        self.event_loop.create_task(self.async_send_command_action(cd_account_device, vehicle_device.address, plugin_action))
 
         # schedule an update shortly
         self.next_update = time.time() + 30.0
+
+    async def async_send_command_action(self, cd_account_device, vin, plugin_action):
+        cd_account = self.cd_accounts[cd_account_device.id]
+        vehicle = cd_account.get_vehicle(vin)
+        if not vehicle:
+            self.logger.warning(f"{cd_account_device.name}: async_send_command_action: vehicle not found")
+            return None
+
+        match plugin_action.props["serviceCode"]:
+            case 'light':
+                status = await vehicle.remote_services.trigger_remote_light_flash()
+
+            case 'lock':
+                status = await vehicle.remote_services.trigger_remote_door_lock()
+
+            case 'unlock':
+                status = await vehicle.remote_services.trigger_remote_door_unlock()
+
+            case 'horn':
+                status = await vehicle.remote_services.trigger_remote_horn()
+
+            case 'climate':
+                status = await vehicle.remote_services.trigger_remote_air_conditioning()
+
+            case 'climate_off':
+                status = await vehicle.remote_services.trigger_remote_air_conditioning_stop()
+
+            case 'charge_start':
+                status =await vehicle.remote_services.trigger_charge_start()
+
+            case 'charge_stop':
+                status = await vehicle.remote_services.trigger_charge_stop()
+
+            case 'send_poi':
+                poi_data = {
+                    "lat": float(plugin_action.props["poi_lat"]),
+                    "lon": float(plugin_action.props["poi_lon"]),
+                    "name": plugin_action.props["poi_name"],
+                    "street": plugin_action.props["poi_address"],
+                    "city": plugin_action.props["poi_city"],
+                    "postal_code": plugin_action.props["poi_postal"],
+                    "country": plugin_action.props["poi_country"],
+                }
+                try:
+                    status = await vehicle.remote_services.trigger_send_poi(poi_data)
+                except Exception as e:
+                    self.logger.warning(f"{vin}: sendCommandAction send_poi error: {e}")
+                    return None
+
+            case _:
+                self.logger.warning(f"{vin}: sendCommandAction unknown serviceCode: {plugin_action.props['serviceCode']}")
+                return None
+
+        self.logger.debug(f"{vehicle.name}: sendCommandAction {plugin_action.props['serviceCode']} result: {status.state}")

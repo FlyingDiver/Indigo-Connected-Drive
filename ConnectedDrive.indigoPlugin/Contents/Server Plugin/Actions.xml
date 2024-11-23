@@ -5,7 +5,7 @@
         <Name>Send Command</Name>
         <CallbackMethod>sendCommandAction</CallbackMethod>
         <ConfigUI>
-        	<Field id="serviceCode" type="menu">
+        	<Field id="serviceCode" type="menu" default="lock">
         		<Label>Service:</Label>
         		<List>
         			<Option value="climate">Air Conditioning On</Option>
@@ -14,10 +14,33 @@
         			<Option value="unlock">Unlock</Option>
         			<Option value="light">Light</Option>
         			<Option value="horn">Horn</Option>
-        			<Option value="charge">Start Charging</Option>
+        			<Option value="charge_start">Start Charging</Option>
+        			<Option value="charge_stop">Stop Charging</Option>
+        			<Option value="send_poi">Send POI</Option>
         		</List>
         	</Field>
-       </ConfigUI>
+           <Field id="poi_lat" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Latitude:</Label>
+            </Field>
+            <Field id="poi_lon" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Longitude:</Label>
+            </Field>
+            <Field id="poi_name" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Name:</Label>
+            </Field>
+            <Field id="poi_address" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Address:</Label>
+            </Field>
+            <Field id="poi_city" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>City:</Label>
+            </Field>
+            <Field id="poi_postal" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Postal Code:</Label>
+            </Field>
+            <Field id="poi_country" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi">
+                <Label>Country:</Label>
+            </Field>
+        </ConfigUI>
     </Action>
     <Action id="fetchVehicleData" uiPath="hidden">
         <Name>Fetch Vehicle Data</Name>

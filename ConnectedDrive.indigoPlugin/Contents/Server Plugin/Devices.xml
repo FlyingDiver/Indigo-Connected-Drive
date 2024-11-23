@@ -48,7 +48,24 @@
                 <Label>Authentication Status:</Label>
             </Field>
         </ConfigUI>
-    </Device>
+        <States>
+            <State id="refresh_token">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Refresh Token</TriggerLabel>
+                <ControlPageLabel>Refresh Token</ControlPageLabel>
+            </State>
+            <State id="gcid">
+                <ValueType>String</ValueType>
+                <TriggerLabel>GCID</TriggerLabel>
+                <ControlPageLabel>GCID</ControlPageLabel>
+            </State>
+            <State id="auth_token">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Auth Token</TriggerLabel>
+                <ControlPageLabel>Auth Token</ControlPageLabel>
+            </State>
+        </States>
+   </Device>
 
     <Device id="cdVehicle" type="custom">
         <Name>Connected Drive Vehicle</Name>
