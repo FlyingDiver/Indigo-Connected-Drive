@@ -20,6 +20,33 @@
         			<Option value="rest_of_world">Rest of World</Option>
         		</List>
         	</Field>
+            <Field id="captcha_note" type="label" fontColor="gray">
+                <Label>
+            Authentication requires a CAPTCHA token.
+            Press the button to open a browser window to get the token.
+            Copy the token and paste it into the field below.
+            The token will be very long and not all visible.
+            The "Open Window" button only works on the Indigo Server.
+            If you are running the Indigo Client on a different machine,
+            you will need to open a browser to the URL shown in the Indigo log.
+                </Label>
+            </Field>
+            <Field id="openCaptcha" type="button">
+                <Label>Get the Captcha Token:</Label>
+                <Title>Open Window</Title>
+                <CallbackMethod>open_browser_to_captcha</CallbackMethod>
+            </Field>
+			<Field id="captcha_token" type="textfield" defaultValue="">
+				<Label>Captcha Token:</Label>
+			</Field>
+            <Field id="getTokens" type="button">
+                <Label>Complete Authentication:</Label>
+                <Title> GO </Title>
+                <CallbackMethod>get_tokens</CallbackMethod>
+            </Field>
+            <Field id="authStatus" type="textfield" readonly="true">
+                <Label>Authentication Status:</Label>
+            </Field>
         </ConfigUI>
     </Device>
 
