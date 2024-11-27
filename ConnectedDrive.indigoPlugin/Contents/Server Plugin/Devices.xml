@@ -9,7 +9,7 @@
             <Field id="username" type="textfield"  defaultValue="">
 				<Label>Username:</Label>
 			</Field>
-			<Field id="password" type="textfield" defaultValue="">
+			<Field id="password" type="textfield" secure="true" defaultValue="">
 				<Label>Password:</Label>
 			</Field>
         	<Field id="region" type="menu" defaultValue="NA">
@@ -37,16 +37,8 @@
                 <CallbackMethod>open_browser_to_captcha</CallbackMethod>
             </Field>
 			<Field id="captcha_token" type="textfield" defaultValue="">
-				<Label>Captcha Token:</Label>
+				<Label>Enter Captcha Token:</Label>
 			</Field>
-            <Field id="getTokens" type="button">
-                <Label>Complete Authentication:</Label>
-                <Title> GO </Title>
-                <CallbackMethod>get_tokens</CallbackMethod>
-            </Field>
-            <Field id="authStatus" type="textfield" readonly="true">
-                <Label>Authentication Status:</Label>
-            </Field>
         </ConfigUI>
         <States>
             <State id="refresh_token">
@@ -76,12 +68,12 @@
             <Field id="address" type="menu">
                 <Label>Vehicle:</Label>
                 <List class="self" method="get_vehicle_list" dynamicReload="true"/>
-                <CallbackMethod>menuChanged</CallbackMethod>
+                <CallbackMethod>menu_changed</CallbackMethod>
             </Field>
             <Field id="state_key" type="menu">
                 <Label>State Key:</Label>
                 <List class="self" method="get_vehicle_state_list" dynamicReload="true"/>
-                <CallbackMethod>menuChanged</CallbackMethod>
+                <CallbackMethod>menu_changed</CallbackMethod>
             </Field>
         </ConfigUI>    
         <States>

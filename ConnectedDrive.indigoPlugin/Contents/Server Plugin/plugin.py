@@ -101,8 +101,8 @@ class Plugin(indigo.PluginBase):
 
 ########################################################################################
 
-    @staticmethod
-    def validatePrefsConfigUi(valuesDict):
+    def validate_prefs_config_ui(self, valuesDict):
+        self.logger.debug(f"validate_prefs_config_ui {dict(valuesDict)=}")
         errorDict = indigo.Dict()
         updateFrequency = int(valuesDict.get('updateFrequency', 15))
         if (updateFrequency < 5) or (updateFrequency > 60):
@@ -111,35 +111,56 @@ class Plugin(indigo.PluginBase):
             return False, valuesDict, errorDict
         return True
 
-    def validateDeviceConfigUi(self, valuesDict, typeId, devId):
-        self.logger.debug(f"validateDeviceConfigUi, {typeId=}, {devId=}, {dict(valuesDict)=}")
-
-        if typeId == "cdAccount":
-            if not valuesDict.get("username", None):
-                return False, valuesDict, {"username": "Username is required"}
-            if not valuesDict.get("password", None):
-                return False, valuesDict, {"password": "Password is required"}
-            if not valuesDict.get("region", None):
-                return False, valuesDict, {"region": "Region is required"}
-            if valuesDict.get("region", None) not in valid_regions():
-                return False, valuesDict, {"region": "Region is invalid"}
-            if not valuesDict.get("captcha_token", None):
-                return False, valuesDict, {"captcha_token": "Captcha token is required"}
-        return True, valuesDict
-
-    def closedPrefsConfigUi(self, valuesDict, userCancelled):
+    def closed_prefs_config_ui(self, valuesDict, userCancelled):
         if not userCancelled:
             self.logLevel = int(valuesDict.get("logLevel", logging.INFO))
             self.indigo_log_handler.setLevel(self.logLevel)
             self.updateFrequency = float(valuesDict['updateFrequency']) * 60.0
             self.next_update = time.time()
-            self.logger.debug(f"closedPrefsConfigUi, logLevel = {self.logLevel}, updateFrequency = {self.updateFrequency}")
+            self.logger.debug(f"closed_prefs_config_ui, logLevel = {self.logLevel}, updateFrequency = {self.updateFrequency}")
 
-    def open_browser_to_captcha(self, valuesDict, typeId, devId):
-        self.logger.info(f"Captcha URL:{CAPTCHA_URL}")
-        self.browserOpen(CAPTCHA_URL)
+    ########################################################################################
 
-    def get_tokens(self, valuesDict, typeId, devId):
+    def get_device_config_ui_values(self, pluginProps, typeId, devId):
+        self.logger.debug(f"get_device_config_ui_values, {typeId=}, {devId=}")
+        valuesDict = indigo.Dict(pluginProps)
+        errorsDict = indigo.Dict()
+
+        if typeId == "cdAccount":
+            valuesDict["captcha_token"] = None
+
+        return valuesDict, errorsDict
+
+    def validate_device_config_ui(self, valuesDict, typeId, devId):
+        self.logger.debug(f"validate_device_config_ui, {typeId=}, {devId=}, {dict(valuesDict)=}")
+        errorsDict = indigo.Dict()
+
+        if typeId == "cdAccount":
+            if not valuesDict.get("username", None) or len(valuesDict.get("username")) == 0:
+                errorsDict["username"] = "Username is required"
+            if not valuesDict.get("password", None) or len(valuesDict.get("password")) == 0:
+                errorsDict["password"] = "Password is required"
+            if not valuesDict.get("region", None) or len(valuesDict.get("region")) == 0:
+                errorsDict["region"] = "Region is required"
+            if valuesDict.get("region", None) not in valid_regions():
+                errorsDict["region"] = "Region is invalid"
+            if not valuesDict.get("captcha_token", None) or len(valuesDict.get("captcha_token")) == 0:
+                errorsDict["captcha_token"] = "Captcha token is required"
+
+        elif typeId == "cdVehicle":
+            pass
+
+        if len(errorsDict):
+            return False, valuesDict, errorsDict
+
+        return True, valuesDict
+
+    def closed_device_config_ui(self, valuesDict, userCancelled, typeId, devId):
+        if userCancelled:
+            self.logger.debug(f"closed_device_config_ui: User cancelled")
+            return
+
+        self.logger.debug(f"closed_device_config_ui, {typeId=}, {devId=}, {dict(valuesDict)=}")
 
         # Attempt to create a MyBMWAccount object to validate the credentials
         try:
@@ -149,26 +170,26 @@ class Plugin(indigo.PluginBase):
                                    hcaptcha_token=valuesDict.get("captcha_token"))
         except Exception as e:
             self.logger.debug(f"get_tokens create account error: {e}")
-            valuesDict["authStatus"] = "Authentication Failed"
-            return False, valuesDict, {"get_tokens": f"Error: {e}"}
+            return
 
         self.cd_accounts[devId] = account
         try:
             auth_data = asyncio.run(self.get_account_data(account))
         except Exception as e:
             self.logger.debug(f"get_tokens get data error: {e}")
-            valuesDict["authStatus"] = "Authentication Failed"
-            return False, valuesDict, {"get_tokens": f"Error: {e}"}
+            return
 
         if auth_data:
-            valuesDict["authStatus"] = "Authenticated"
             self.pluginPrefs[AUTH_TOKEN_PLUGIN_PREF.format(devId)] = json.dumps(auth_data)
             self.savePluginPrefs()
-        else:
-            valuesDict["authStatus"] = "Authentication Failed"
+
         self.need_update = True
 
         return valuesDict
+
+    def open_browser_to_captcha(self, valuesDict, typeId, devId):
+        self.logger.info(f"Captcha URL:{CAPTCHA_URL}")
+        self.browserOpen(CAPTCHA_URL)
 
     ################################################################################
 
@@ -341,27 +362,26 @@ class Plugin(indigo.PluginBase):
 
     # doesn't do anything, just needed to force other menus to dynamically refresh
     @staticmethod
-    def menuChanged(valuesDict=None, typeId=None, devId=None):
+    def menu_changed(valuesDict=None, typeId=None, devId=None):
         return valuesDict
 
-    def fetchVehicleDataAction(self, action, device, callerWaitingForResult):
+    def fetch_vehicle_data_action(self, action, device, callerWaitingForResult):
         vin = action.props["vin"]
         try:
             return json.dumps(self.vehicle_data[vin])
         except (Exception,):
             return json.dumps({})
 
-    def menuDumpVehicles(self):
+    def menu_dump_vehicles(self):
         for vin in self.vehicle_data:
-            # self.logger.info(f"Data for VIN {vin}:\n{self.vehicle_data[vin]}")
             self.logger.info(
                 f"Data for VIN {vin}:\n{json.dumps(self.vehicle_data[vin], skipkeys=True, sort_keys=True, indent=4, separators=(',', ': '))}")
         return True
 
-    def sendCommandAction(self, plugin_action, vehicle_device, callerWaitingForResult):
-        self.logger.debug(f"{vehicle_device.name}: sendCommandAction {plugin_action.props['serviceCode']} for VIN {vehicle_device.address}")
+    def send_command_action(self, plugin_action, vehicle_device, callerWaitingForResult):
+        self.logger.debug(f"{vehicle_device.name}: send_command_action {plugin_action.props['serviceCode']} for VIN {vehicle_device.address}")
         cd_account_device = indigo.devices[int(self.vehicle_data[vehicle_device.address]['account'])]
-        self.logger.debug(f"{vehicle_device.name}: sendCommandAction using cd_account_device: {cd_account_device.name}")
+        self.logger.debug(f"{vehicle_device.name}: send_command_action using cd_account_device: {cd_account_device.name}")
 
         self.event_loop.create_task(self.async_send_command_action(cd_account_device, vehicle_device.address, plugin_action))
 
@@ -395,7 +415,7 @@ class Plugin(indigo.PluginBase):
                 status = await vehicle.remote_services.trigger_remote_air_conditioning_stop()
 
             case 'charge_start':
-                status =await vehicle.remote_services.trigger_charge_start()
+                status = await vehicle.remote_services.trigger_charge_start()
 
             case 'charge_stop':
                 status = await vehicle.remote_services.trigger_charge_stop()
@@ -413,11 +433,11 @@ class Plugin(indigo.PluginBase):
                 try:
                     status = await vehicle.remote_services.trigger_send_poi(poi_data)
                 except Exception as e:
-                    self.logger.warning(f"{vin}: sendCommandAction send_poi error: {e}")
+                    self.logger.warning(f"{vin}: send_command_action send_poi error: {e}")
                     return None
 
             case _:
-                self.logger.warning(f"{vin}: sendCommandAction unknown serviceCode: {plugin_action.props['serviceCode']}")
+                self.logger.warning(f"{vin}: send_command_action unknown serviceCode: {plugin_action.props['serviceCode']}")
                 return None
 
-        self.logger.debug(f"{vehicle.name}: sendCommandAction {plugin_action.props['serviceCode']} result: {status.state}")
+        self.logger.debug(f"{vehicle.name}: send_command_action {plugin_action.props['serviceCode']} result: {status.state}")
