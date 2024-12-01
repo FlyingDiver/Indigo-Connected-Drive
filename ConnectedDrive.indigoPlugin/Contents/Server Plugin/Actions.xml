@@ -16,17 +16,17 @@
         			<Option value="horn">Horn</Option>
         			<Option value="charge_start">Start Charging</Option>
         			<Option value="charge_stop">Stop Charging</Option>
-<!--        			<Option value="send_poi">Send POI</Option> -->
+        			<Option value="send_poi">Send POI</Option>
         		</List>
         	</Field>
-           <Field id="poi_lat" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
-                <Label>Latitude:</Label>
-            </Field>
-            <Field id="poi_lon" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
-                <Label>Longitude:</Label>
-            </Field>
             <Field id="poi_name" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
                 <Label>Name:</Label>
+            </Field>
+            <Field id="poi_lat" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Latitude (Required):</Label>
+            </Field>
+            <Field id="poi_lon" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Longitude (Required):</Label>
             </Field>
             <Field id="poi_address" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
                 <Label>Address:</Label>

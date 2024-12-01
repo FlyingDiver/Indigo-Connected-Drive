@@ -1,2 +1,2 @@
-bimmer-connected==0.17.0
+bimmer-connected==0.17.2
 aiohttp==3.11.0
