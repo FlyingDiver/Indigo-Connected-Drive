@@ -66,6 +66,7 @@ class Plugin(indigo.PluginBase):
         self.cd_accounts = {}
         self.cd_vehicles = {}
         self.vehicle_data = {}
+        self.triggers = []
 
         self.event_loop = None
         self.async_thread = None
@@ -170,6 +171,12 @@ class Plugin(indigo.PluginBase):
                                    hcaptcha_token=valuesDict.get("captcha_token"))
         except Exception as e:
             self.logger.debug(f"get_tokens create account error: {e}")
+
+            for triggerID in self.triggers:
+                trigger = indigo.triggers[triggerID]
+                if trigger.pluginTypeId == "auth_error":
+                    indigo.trigger.execute(trigger)
+
             return
 
         self.cd_accounts[devId] = account
@@ -177,6 +184,11 @@ class Plugin(indigo.PluginBase):
             auth_data = asyncio.run(self.get_account_data(account))
         except Exception as e:
             self.logger.debug(f"get_tokens get data error: {e}")
+
+            for triggerID in self.triggers:
+                trigger = indigo.triggers[triggerID]
+                if trigger.pluginTypeId == "auth_error":
+                    indigo.trigger.execute(trigger)
             return
 
         if auth_data:
@@ -190,6 +202,20 @@ class Plugin(indigo.PluginBase):
     def open_browser_to_captcha(self, valuesDict, typeId, devId):
         self.logger.info(f"Captcha URL:{CAPTCHA_URL}")
         self.browserOpen(CAPTCHA_URL)
+
+    ########################################
+    # Trigger (Event) handling
+    ########################################
+
+    def triggerStartProcessing(self, trigger):
+        self.logger.debug(f"{trigger.name}: Adding Trigger")
+        assert trigger.id not in self.triggers
+        self.triggers.append(trigger.id)
+
+    def triggerStopProcessing(self, trigger):
+        self.logger.debug(f"{trigger.name}: Removing Trigger")
+        assert trigger.id in self.triggers
+        self.triggers.remove(trigger.id)
 
     ################################################################################
 
@@ -226,7 +252,20 @@ class Plugin(indigo.PluginBase):
 
     async def get_account_data(self, account):
         self.logger.debug(f"get_account_data")
-        await account.get_vehicles()
+
+        try:
+            await account.get_vehicles()
+        except HTTPStatusError as e:
+            self.logger.debug(f"get_account_data get_vehicles error: {e}")
+            for triggerID in self.triggers:
+                trigger = indigo.triggers[triggerID]
+                if trigger.pluginTypeId == "auth_error":
+                    indigo.trigger.execute(trigger)
+            return None
+        except Exception as e:
+            self.logger.warning(f"get_account_data get_vehicles error: {e}")
+            return None
+
         return {
             "refresh_token": account.config.authentication.refresh_token,
             "gcid": account.config.authentication.gcid,
@@ -239,6 +278,9 @@ class Plugin(indigo.PluginBase):
 
         cd_account = self.cd_accounts[account_dev_id]
         auth_data = await self.get_account_data(cd_account)
+        if not auth_data:
+            return
+
         self.logger.debug(f"{account_dev.name}: {auth_data=}")
 
         states_list = [{'key': 'refresh_token', 'value': auth_data['refresh_token']},
