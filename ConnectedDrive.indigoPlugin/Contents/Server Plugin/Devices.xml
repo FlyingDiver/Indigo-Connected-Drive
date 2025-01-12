@@ -9,7 +9,7 @@
             <Field id="username" type="textfield"  defaultValue="">
 				<Label>Username:</Label>
 			</Field>
-			<Field id="password" type="textfield" defaultValue="">
+			<Field id="password" type="textfield" secure="true" defaultValue="">
 				<Label>Password:</Label>
 			</Field>
         	<Field id="region" type="menu" defaultValue="NA">
@@ -20,8 +20,44 @@
         			<Option value="rest_of_world">Rest of World</Option>
         		</List>
         	</Field>
+            <Field id="captcha_note" type="label" fontColor="gray">
+                <Label>
+            Authentication requires a CAPTCHA token.
+            Press the button to open a browser window to get the token.
+            Copy the token and paste it into the field below.
+            The token will be very long and not all visible.
+            The "Open Window" button only works on the Indigo Server.
+            If you are running the Indigo Client on a different machine,
+            you will need to open a browser to the URL shown in the Indigo log.
+                </Label>
+            </Field>
+            <Field id="openCaptcha" type="button">
+                <Label>Get the Captcha Token:</Label>
+                <Title>Open Window</Title>
+                <CallbackMethod>open_browser_to_captcha</CallbackMethod>
+            </Field>
+			<Field id="captcha_token" type="textfield" defaultValue="">
+				<Label>Enter Captcha Token:</Label>
+			</Field>
         </ConfigUI>
-    </Device>
+        <States>
+            <State id="refresh_token">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Refresh Token</TriggerLabel>
+                <ControlPageLabel>Refresh Token</ControlPageLabel>
+            </State>
+            <State id="gcid">
+                <ValueType>String</ValueType>
+                <TriggerLabel>GCID</TriggerLabel>
+                <ControlPageLabel>GCID</ControlPageLabel>
+            </State>
+            <State id="auth_token">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Auth Token</TriggerLabel>
+                <ControlPageLabel>Auth Token</ControlPageLabel>
+            </State>
+        </States>
+   </Device>
 
     <Device id="cdVehicle" type="custom">
         <Name>Connected Drive Vehicle</Name>
@@ -32,12 +68,12 @@
             <Field id="address" type="menu">
                 <Label>Vehicle:</Label>
                 <List class="self" method="get_vehicle_list" dynamicReload="true"/>
-                <CallbackMethod>menuChanged</CallbackMethod>
+                <CallbackMethod>menu_changed</CallbackMethod>
             </Field>
             <Field id="state_key" type="menu">
                 <Label>State Key:</Label>
                 <List class="self" method="get_vehicle_state_list" dynamicReload="true"/>
-                <CallbackMethod>menuChanged</CallbackMethod>
+                <CallbackMethod>menu_changed</CallbackMethod>
             </Field>
         </ConfigUI>    
         <States>

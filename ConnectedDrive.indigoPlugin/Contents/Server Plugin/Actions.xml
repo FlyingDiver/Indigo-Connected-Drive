@@ -3,9 +3,9 @@
     <SupportURL>https://forums.indigodomo.com/viewforum.php?f=295</SupportURL>
     <Action id="sendCommand" deviceFilter="self.cdVehicle">
         <Name>Send Command</Name>
-        <CallbackMethod>sendCommandAction</CallbackMethod>
+        <CallbackMethod>send_command_action</CallbackMethod>
         <ConfigUI>
-        	<Field id="serviceCode" type="menu">
+        	<Field id="serviceCode" type="menu" defaultValue="lock">
         		<Label>Service:</Label>
         		<List>
         			<Option value="climate">Air Conditioning On</Option>
@@ -14,14 +14,37 @@
         			<Option value="unlock">Unlock</Option>
         			<Option value="light">Light</Option>
         			<Option value="horn">Horn</Option>
-        			<Option value="charge">Start Charging</Option>
+        			<Option value="charge_start">Start Charging</Option>
+        			<Option value="charge_stop">Stop Charging</Option>
+        			<Option value="send_poi">Send POI</Option>
         		</List>
         	</Field>
-       </ConfigUI>
+            <Field id="poi_name" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Name:</Label>
+            </Field>
+            <Field id="poi_lat" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Latitude (Required):</Label>
+            </Field>
+            <Field id="poi_lon" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Longitude (Required):</Label>
+            </Field>
+            <Field id="poi_address" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Address:</Label>
+            </Field>
+            <Field id="poi_city" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>City:</Label>
+            </Field>
+            <Field id="poi_postal" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Postal Code:</Label>
+            </Field>
+            <Field id="poi_country" type="textfield" visibleBindingId="serviceCode" visibleBindingValue="send_poi" alwaysUseInDialogHeightCalc="true">
+                <Label>Country:</Label>
+            </Field>
+        </ConfigUI>
     </Action>
     <Action id="fetchVehicleData" uiPath="hidden">
         <Name>Fetch Vehicle Data</Name>
-        <CallbackMethod>fetchVehicleDataAction</CallbackMethod>
+        <CallbackMethod>fetch_vehicle_data_action</CallbackMethod>
          <ConfigUI><Field id="vin" type="textfield"/></ConfigUI>
    </Action>
      </Actions>

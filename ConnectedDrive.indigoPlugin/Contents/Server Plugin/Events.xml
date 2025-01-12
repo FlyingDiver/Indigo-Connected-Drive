@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<Events>
+	<Event id="auth_error">
+        <Name>Authorization Error</Name>
+	</Event>
+</Events>
