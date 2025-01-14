@@ -12,6 +12,7 @@ from aiohttp import ClientSession
 import threading
 
 from math import radians, cos, sin, asin, sqrt
+from pint import UnitRegistry
 
 from bimmer_connected.account import MyBMWAccount
 from bimmer_connected.api.regions import get_region_from_name, valid_regions
@@ -58,6 +59,7 @@ class Plugin(indigo.PluginBase):
         self.need_update = False
 
         self.units = pluginPrefs.get('units', "us")
+        self.ureg = UnitRegistry()
 
         self.bridge_data = {}
         self.wrappers = {}
@@ -310,10 +312,7 @@ class Plugin(indigo.PluginBase):
                            {'key': 'brand', 'value': vehicle.brand},
                            {'key': 'driveTrain', 'value': vehicle.drive_train},
                            {'key': 'is_vehicle_active', 'value': vehicle.is_vehicle_active},
-                           {'key': 'is_service_required', 'value': vehicle.condition_based_services.is_service_required},
-                           {'key': 'mileage', 'value': vehicle.mileage[0], 'uiValue': f"{vehicle.mileage[0]} {vehicle.mileage[1]}"},
-                           {'key': 'timestamp',
-                            'value': vehicle.timestamp.replace(tzinfo=datetime.timezone.utc).astimezone().strftime("%d %b %Y %H:%M:%S %Z")},
+                           {'key': 'timestamp', 'value': vehicle.timestamp.replace(tzinfo=datetime.timezone.utc).astimezone().strftime("%d %b %Y %H:%M:%S %Z")},
                            {'key': 'model', 'value': vehicle.data['attributes']['model']},
                            {'key': 'year', 'value': vehicle.data['attributes']['year']},
                            {'key': 'all_lids_closed', 'value': vehicle.doors_and_windows.all_lids_closed},
@@ -321,13 +320,33 @@ class Plugin(indigo.PluginBase):
                            {'key': 'open_windows', 'value': ""},
                            {'key': 'door_lock_state', 'value': vehicle.doors_and_windows.door_lock_state},
                            {'key': 'is_charger_connected', 'value': vehicle.fuel_and_battery.is_charger_connected},
-                           {'key': 'remaining_fuel', 'value': vehicle.fuel_and_battery.remaining_fuel.value},
                            {'key': 'remaining_fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
-                           {'key': 'remaining_range_total', 'value': vehicle.fuel_and_battery.remaining_range_total.value},
                            {'key': 'remaining_battery_percent', 'value': vehicle.fuel_and_battery.remaining_battery_percent},
-                           {'key': 'distance', 'value': distance},
                            {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
+
+            if self.units == "metric":  # use API results directly
+                states_list.append({'key': 'mileage', 'value': vehicle.mileage[0],
+                                    'uiValue': f"{vehicle.mileage[0]} {vehicle.mileage[1]}"})
+                states_list.append({'key': 'remaining_fuel', 'value': vehicle.fuel_and_battery.remaining_fuel.value,
+                                    'uiValue': f"{vehicle.fuel_and_battery.remaining_fuel.value} L"})
+                states_list.append({'key': 'remaining_range_total', 'value': vehicle.fuel_and_battery.remaining_range_total.value,
+                                   'uiValue': f"{vehicle.fuel_and_battery.remaining_range_total.value} km"})
+                states_list.append({'key': 'distance', 'value': distance,
+                                    'uiValue': f"{distance} km"})
+
+            else:                        # convert to US units
+                mileage = (vehicle.mileage[0] * self.ureg.kilometer).to(self.ureg.miles)
+                states_list.append({'key': 'mileage', 'value': int(mileage.magnitude), 'uiValue': f"{int(mileage.magnitude)} mi"})
+
+                fuel = (vehicle.fuel_and_battery.remaining_fuel.value * self.ureg.liter).to(self.ureg.gallon)
+                states_list.append({'key': 'remaining_fuel', 'value': float(fuel.magnitude), 'uiValue': f"{fuel.magnitude:.1f} gal"})
+
+                range = (vehicle.fuel_and_battery.remaining_range_total.value * self.ureg.kilometer).to(self.ureg.miles)
+                states_list.append({'key': 'remaining_range_total', 'value': int(range.magnitude), 'uiValue': f"{int(range.magnitude)} mi"})
+
+                distance = (distance * self.ureg.kilometer).to(self.ureg.miles)
+                states_list.append({'key': 'distance', 'value': float(distance.magnitude), 'uiValue': f"{distance.magnitude:.2f} mi"})
 
             if vehicle.vehicle_location:
                 states_list.append({'key': 'gps_lat', 'value': vehicle.vehicle_location.location.latitude})
@@ -345,35 +364,15 @@ class Plugin(indigo.PluginBase):
             states_list.append({'key': 'open_windows', 'value': open_window_list})
 
             state_key = vehicleDevice.pluginProps["state_key"]
-            match state_key:
-                case 'mileage':
-                    status_value = vehicle.mileage[0]
-                    status_ui = f"{vehicle.mileage[0]} {vehicle.mileage[1]}"
-
-                case 'remaining_fuel':
-                    status_value = vehicle.fuel_and_battery.remaining_fuel[0]
-                    status_ui = f"{vehicle.fuel_and_battery.remaining_fuel.value} {vehicle.fuel_and_battery.remaining_fuel.unit}"
-
-                case 'remaining_fuel_percent':
-                    status_value = vehicle.fuel_and_battery.remaining_fuel_percent
-                    status_ui = f"{vehicle.fuel_and_battery.remaining_fuel_percent}%"
-
-                case 'remaining_battery_percent':
-                    status_value = vehicle.fuel_and_battery.remaining_battery_percent
-                    status_ui = f"{vehicle.fuel_and_battery.remaining_battery_percent}%"
-
-                case 'remaining_range_total':
-                    status_value = vehicle.fuel_and_battery.remaining_range_total[0]
-                    status_ui = f"{vehicle.fuel_and_battery.remaining_range_total[0]} {vehicle.fuel_and_battery.remaining_range_total[1]}"
-
-                case 'door_lock_state':
-                    status_value = vehicle.doors_and_windows.door_lock_state
-                    status_ui = vehicle.doors_and_windows.door_lock_state
-
-                case _:
-                    status_value = ""
-                    status_ui = ""
+            status_value = ""
+            status_ui = ""
+            for state in states_list:
+                if state['key'] == state_key:
+                    status_value = state['value']
+                    status_ui = state['uiValue']
+                    break
             states_list.append({'key': 'status', 'value': status_value, 'uiValue': status_ui})
+
             vehicleDevice.updateStatesOnServer(states_list)
 
     def get_vehicle_list(self, filter="", valuesDict=None, typeId="", targetId=0):

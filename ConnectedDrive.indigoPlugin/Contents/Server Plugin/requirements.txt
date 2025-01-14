@@ -1,2 +1,3 @@
 bimmer-connected==0.17.2
 aiohttp==3.11.0
+pint==0.24.4

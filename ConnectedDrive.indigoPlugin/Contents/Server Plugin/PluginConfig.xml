@@ -8,7 +8,6 @@
   <Field id="updateNote" type="label" fontSize="small" fontColor="darkgray">
     <Label>Minimum update interval is 5 minutes.  Default is 30.</Label>
   </Field>
-
   <Field id="units" type="menu" defaultValue="us">
     <Label>Preferred Units:</Label>
     <List>
@@ -16,7 +15,6 @@
       <Option value="metric">Metric (meters/liters)</Option>
     </List>
   </Field>
-
   <Field id="logLevel" type="menu" defaultValue="20">
     <Label>Event Logging Level:</Label>
     <List>
