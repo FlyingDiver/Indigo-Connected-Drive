@@ -308,6 +308,11 @@ class Plugin(indigo.PluginBase):
             except (Exception,):
                 distance = 0.0
 
+            fuel_percent = vehicle.fuel_and_battery.remaining_fuel_percent
+            fuel_percent_ui = f"{fuel_percent} %" if fuel_percent else ""
+            battery_percent = vehicle.fuel_and_battery.remaining_battery_percent
+            battery_percent_ui = f"{battery_percent} %" if battery_percent else ""
+
             states_list = [{'key': 'vin', 'value': vehicle.vin},
                            {'key': 'brand', 'value': vehicle.brand},
                            {'key': 'driveTrain', 'value': vehicle.drive_train},
@@ -320,8 +325,8 @@ class Plugin(indigo.PluginBase):
                            {'key': 'open_windows', 'value': ""},
                            {'key': 'door_lock_state', 'value': vehicle.doors_and_windows.door_lock_state},
                            {'key': 'is_charger_connected', 'value': vehicle.fuel_and_battery.is_charger_connected},
-                           {'key': 'remaining_fuel_percent', 'value': vehicle.fuel_and_battery.remaining_fuel_percent},
-                           {'key': 'remaining_battery_percent', 'value': vehicle.fuel_and_battery.remaining_battery_percent},
+                           {'key': 'remaining_fuel_percent', 'value': fuel_percent, 'uiValue': fuel_percent_ui},
+                           {'key': 'remaining_battery_percent', 'value': battery_percent, 'uiValue': battery_percent_ui},
                            {'key': 'last_update', 'value': time.strftime("%d %b %Y %H:%M:%S %Z")},
                            ]
 
@@ -363,13 +368,12 @@ class Plugin(indigo.PluginBase):
                 open_window_list = ", ".join(window.name for window in vehicle.doors_and_windows.open_windows)
             states_list.append({'key': 'open_windows', 'value': open_window_list})
 
-            state_key = vehicleDevice.pluginProps["state_key"]
             status_value = ""
             status_ui = ""
             for state in states_list:
-                if state['key'] == state_key:
+                if state['key'] == vehicleDevice.pluginProps["state_key"]:
                     status_value = state['value']
-                    status_ui = state['uiValue']
+                    status_ui = state.get('uiValue', status_value)
                     break
             states_list.append({'key': 'status', 'value': status_value, 'uiValue': status_ui})
 
